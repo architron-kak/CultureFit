@@ -118,17 +118,6 @@
     .crosshair:after { width: 10px; height: 1px; left: 13px; top: 18px; }
     .map-legend { position: fixed; bottom: 116px; left: 360px; z-index: 2; display: flex; align-items: center; gap: 10px; background: #0b1416e6; border: 1px solid var(--line); border-radius: 8px; padding: 9px 13px; color: #c0d0d1; font: 9px var(--mono); }
     .legend-gradient { width: 80px; height: 3px; background: linear-gradient(90deg, var(--coral),var(--amber),var(--teal)); border-radius: 2px; }
-    .map-settings-toggle { color: #c0d0d1; background: none; border: 0; border-left: 1px solid var(--line); padding: 2px 0 2px 10px; font: inherit; }
-    .basemap-status { position: fixed; z-index: 3; left: 360px; right: 385px; top: 96px; padding: 9px 12px; border: 1px solid #795920; border-radius: 8px; color: #f7c368; background: #332715f5; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 10px; }
-    .basemap-status button { background: none; border: 0; color: #f7c368; text-decoration: underline; text-underline-offset: 3px; padding: 4px; font: inherit; white-space: nowrap; }
-    .basemap-dialog { width: 420px; max-width: calc(100vw - 30px); border-radius: 18px; padding: 26px; background: #101e20; color: var(--text); border: 1px solid #3a5558; }
-    .basemap-dialog::backdrop { background: #040b0dbb; backdrop-filter: blur(5px); }
-    .basemap-dialog h2 { font: 400 28px var(--serif); padding-right: 25px; margin-bottom: 12px; }
-    .basemap-dialog p { color: #b5c9cb; font-size: 12px; line-height: 1.8; margin-bottom: 17px; }
-    .basemap-dialog a { color: var(--teal); text-decoration: underline; }
-    .basemap-dialog input { margin: 8px 0 14px; }
-    .basemap-dialog .dialog-actions { display: flex; align-items: center; gap: 16px; }
-    .basemap-dialog .primary { width: auto; padding: 10px 16px; }
     .north { position: fixed; top: 107px; left: 363px; z-index: 2; font: 10px var(--mono); color: #afc6c8; display: flex; align-items: center; gap: 9px; pointer-events: none; }
     .north i { height: 22px; width: 1px; background: linear-gradient(var(--teal),transparent); transform: rotate(20deg); }
     .results-panel { position: fixed; top: 92px; right: 24px; bottom: 110px; z-index: 4; width: 340px; display: flex; flex-direction: column; border-radius: var(--radius); overflow: hidden; }
@@ -237,7 +226,6 @@
       .control-panel { width: 330px; }
       .results-panel { width: 365px; }
       .map-legend, .north { left: 379px; }
-      .basemap-status { left: 379px; right: 410px; }
       .center-story { left: 390px; right: 410px; }
       .maplibregl-ctrl-top-right, .maplibregl-ctrl-bottom-right { right: 410px !important; }
     }
@@ -249,7 +237,6 @@
       .center-story h2 { font-size: 39px; }
       .location-readout small, .brand-tag { display: none; }
       .map-legend, .north { left: 320px; }
-      .basemap-status { left: 320px; right: 340px; }
       .maplibregl-ctrl-top-right, .maplibregl-ctrl-bottom-right { right: 340px !important; }
     }
     @media (max-width: 760px) {
@@ -307,7 +294,6 @@
       .log-toggle { flex-shrink: 0; }
       .map-legend { left: 18px; bottom: auto; top: 92px; font-size: 8px; padding: 7px 9px; }
       .legend-gradient { width: 50px; }
-      .basemap-status { left: 18px; right: 70px; top: 142px; font-size: 9px; padding: 7px 9px; }
       .north { display: none; }
       .maplibregl-ctrl-top-right { top: 78px !important; right: 10px !important; }
       .maplibregl-ctrl-bottom-right { bottom: auto !important; top: 72px !important; right: 62px !important; }
@@ -363,8 +349,7 @@
 
     <div class="center-story" id="center-story"><div class="crosshair" aria-hidden="true"></div><p class="eyebrow">YOUR TASTE IS A COMPASS</p><h2>A city of possibilities.<span>Find your coordinates.</span></h2><p>Music you replay. Films you feel.<br>Places where both of you belong.</p></div>
     <div class="north" aria-hidden="true"><i></i>N</div>
-    <div class="map-legend" aria-label="Relative group fit: coral is lower, amber is intermediate, teal is higher"><span>LOWER</span><i class="legend-gradient" aria-hidden="true"></i><span>HIGHER FIT</span><button class="map-settings-toggle" id="map-settings" type="button" aria-label="Configure CARTO basemap">Map setup</button></div>
-    <div class="basemap-status" id="basemap-status" role="status"><span>CARTO needs a map key to display streets.</span><button type="button" id="setup-basemap">Add key ↗</button></div>
+    <div class="map-legend" aria-label="Relative group fit: coral is lower, amber is intermediate, teal is higher"><span>LOWER</span><i class="legend-gradient" aria-hidden="true"></i><span>HIGHER FIT</span></div>
 
     <section class="results-panel glass" id="results-panel" aria-labelledby="results-title" hidden>
       <div class="panel-grip" aria-hidden="true"></div>
@@ -379,12 +364,6 @@
 
     <nav class="sheet-nav glass" aria-label="Mobile panels"><button id="tab-taste" type="button" aria-selected="true">Your taste</button><button id="tab-map" type="button" aria-selected="false">Map</button><button id="tab-results" type="button" aria-selected="false">Matches <span class="mobile-result-count" id="mobile-result-count">0</span></button></nav>
     <section class="log-panel glass" aria-label="Live agent log"><div class="log-header"><span class="log-title"><span class="dot"></span>AGENT LIVE</span><span class="log-state" id="log-state" role="status">Waiting for your signal</span><button class="log-toggle" id="log-toggle" type="button" aria-expanded="false" aria-controls="log-window">History ↗</button></div><div class="log-window" id="log-window"><ol id="trace" aria-live="polite" aria-relevant="additions"></ol></div></section>
-    <dialog class="basemap-dialog" id="basemap-dialog" aria-labelledby="basemap-title">
-      <button class="close-drawer" id="close-basemap" type="button" aria-label="Close basemap settings">×</button>
-      <h2 id="basemap-title">Bring the streets to life.</h2>
-      <p>CARTO Dark Matter now requires a browser map key. <a href="https://carto.com/basemaps/apikey" target="_blank" rel="noopener noreferrer">Get a key from CARTO ↗</a></p>
-      <form id="basemap-form"><label for="basemap-key">CARTO basemap key</label><input id="basemap-key" type="password" maxlength="512" autocomplete="off" spellcheck="false" required><p>The key is saved only in this browser and sent directly to CARTO. It is not sent to the CultureFit API.</p><div class="dialog-actions"><button class="primary" type="submit">Save map key</button><button class="text-button" id="clear-basemap" type="button">Clear saved key</button></div></form>
-    </dialog>
   </main>
   <script>
     'use strict';
@@ -393,8 +372,6 @@
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
     const mobile = window.matchMedia('(max-width: 760px)');
     const colors = ['#2dd4bf', '#fb7185'];
-    let basemapKey = '';
-    try { basemapKey = localStorage.getItem('culturefit.cartoKey') || ''; } catch { /* Session-only mode. */ }
     const cityViews = {
       Zurich: { center: [8.54, 47.377], zoom: 12, coordinates: '47.377° N / 8.540° E' },
       Almaty: { center: [76.934, 43.25], zoom: 11.7, coordinates: '43.250° N / 76.934° E' }
@@ -575,28 +552,7 @@
     function mapFallback() {
       $('#map-fallback').hidden = false;
       $('#center-story').hidden = true;
-      $('#basemap-status').hidden = true;
       log('Map unavailable. Neighborhood cards and evidence still work.', 'warning');
-    }
-
-    function cartoTiles(key) {
-      const query = key ? '?key=' + encodeURIComponent(key) : '';
-      return ['a', 'b', 'c', 'd'].map(subdomain =>
-        `https://${subdomain}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png${query}`);
-    }
-
-    function applyBasemap() {
-      $('#basemap-status').hidden = Boolean(basemapKey);
-      if (!map || !ready) return;
-      if (map.getLayer('night-basemap')) map.removeLayer('night-basemap');
-      if (map.getSource('carto')) map.removeSource('carto');
-      if (!basemapKey) return;
-      map.addSource('carto', {
-        type: 'raster', tiles: cartoTiles(basemapKey), tileSize: 256,
-        attribution: '© OpenStreetMap contributors © CARTO'
-      });
-      map.addLayer({ id: 'night-basemap', type: 'raster', source: 'carto' },
-        map.getLayer('area-glow') ? 'area-glow' : undefined);
     }
 
     async function init() {
@@ -617,14 +573,35 @@
           attributionControl: true,
           style: {
             version: 8,
-            sources: {},
-            layers: [{ id: 'night-background', type: 'background', paint: { 'background-color': '#0b0f10' } }]
+            sources: {
+              osm: {
+                type: 'raster',
+                tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+                tileSize: 256,
+                maxzoom: 19,
+                attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>'
+              }
+            },
+            layers: [
+              { id: 'night-background', type: 'background', paint: { 'background-color': '#0b0f10' } },
+              {
+                id: 'night-basemap', type: 'raster', source: 'osm',
+                paint: {
+                  // Reverse the raster brightness range to create a dark monochrome basemap.
+                  // This affects only OSM tiles, preserving the overlay and person colors.
+                  'raster-saturation': -1,
+                  'raster-brightness-min': .68,
+                  'raster-brightness-max': .035,
+                  'raster-contrast': .1,
+                  'raster-opacity': .85
+                }
+              }
+            ]
           }
         });
         map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
         map.on('load', () => {
           ready = true;
-          applyBasemap();
           if (lastResult) draw(lastResult);
         });
       } catch (error) {
@@ -1192,33 +1169,7 @@
     });
     $('#close-drawer').addEventListener('click', () => closeDrawer());
     document.addEventListener('keydown', event => {
-      if (event.key === 'Escape' && !$('#basemap-dialog').open && !$('#why-drawer').hidden) closeDrawer();
-    });
-    function openBasemapSettings() {
-      $('#basemap-key').value = basemapKey;
-      $('#basemap-dialog').showModal();
-    }
-    $('#map-settings').addEventListener('click', openBasemapSettings);
-    $('#setup-basemap').addEventListener('click', openBasemapSettings);
-    $('#close-basemap').addEventListener('click', () => $('#basemap-dialog').close());
-    $('#basemap-form').addEventListener('submit', event => {
-      event.preventDefault();
-      basemapKey = $('#basemap-key').value.trim();
-      if (!basemapKey) return;
-      try { localStorage.setItem('culturefit.cartoKey', basemapKey); } catch {
-        message('Map key works for this session; browser storage is unavailable.');
-      }
-      applyBasemap();
-      $('#basemap-dialog').close();
-      log('CARTO basemap configured. Loading streets…');
-    });
-    $('#clear-basemap').addEventListener('click', () => {
-      basemapKey = '';
-      try { localStorage.removeItem('culturefit.cartoKey'); } catch { /* No stored key. */ }
-      $('#basemap-key').value = '';
-      applyBasemap();
-      $('#basemap-dialog').close();
-      log('Saved CARTO key cleared. Neighborhood overlays remain available.', 'warning');
+      if (event.key === 'Escape' && !$('#why-drawer').hidden) closeDrawer();
     });
     $('#log-toggle').addEventListener('click', () => {
       const expanded = $('#log-window').classList.toggle('expanded');
