@@ -6,7 +6,16 @@ BAD = re.compile(
     r"\b(hotels?|hostels?|motels?|ibis|hilton|hampton|moxy|resorts?|apartments?|residences?|inn|"
     r"airport|bank|pharmacy|kfc|subway|mcdonald'?s|гостиниц\w*)\b", re.I,
 )
-LOW_SPREAD = 0.03  # Heuristic for raw API affinity (0..1), not a statistical confidence interval.
+# Heuristic in raw Qloo affinity units (0..1), not a confidence interval.
+# A small raw difference must not be stretched over the entire relative scale.
+MIN_SPREAD = 0.08
+LOW_SPREAD = MIN_SPREAD
+UTILITY = re.compile(
+    r"\b(?:mastercard|visa|union[ -]?pay|american express|nfc|payments?|credit|debit|cash|"
+    r"wheelchair|parking|prices?|chf|reservations?|delivery|take[ -]?out|wi[ -]?fi|"
+    r"accessible|ok to order|laundry)\b",
+    re.I,
+)
 
 
 def _text(e):
@@ -49,12 +58,27 @@ def area_score(entities, exclude=(), k=5):
     return sum(values) / len(values) if values else None
 
 
+def good_tags(entity):
+    """Keep taste-related names, filtering utility tags before the evidence limit."""
+    names = []
+    seen = set()
+    for tag in entity.get('tags') or []:
+        if not isinstance(tag, dict) or not isinstance(tag.get('name'), str):
+            continue
+        name = tag['name'].strip()
+        if not name or UTILITY.search(name) or name.casefold() in seen:
+            continue
+        seen.add(name.casefold())
+        names.append(name)
+    return names
+
+
 def evidence(entities, exclude=(), n=3):
     ents = sorted(_eligible(entities, exclude), key=_affinity, reverse=True)
     return [{
         'name': e.get('name', 'Unnamed venue'),
         'affinity': round(_affinity(e), 3),
-        'tags': [t['name'] for t in (e.get('tags') or []) if isinstance(t, dict) and t.get('name')][:5],
+        'tags': good_tags(e)[:5],
         'why': (e.get('query') or {}).get('explainability'),
     } for e in ents[:n]]
 
@@ -72,8 +96,10 @@ def rank_areas(data, exclude=()):
         values = [v for v in raw[p].values() if v is not None]
         lo, hi = (min(values), max(values)) if values else (0, 0)
         spread[p] = round(hi - lo, 4)
+        denominator = max(hi - lo, MIN_SPREAD)
         rel[p] = {
-            a: (None if raw[p][a] is None else (100 * (raw[p][a] - lo) / (hi - lo) if hi > lo else 50))
+            a: (None if raw[p][a] is None else
+                100 * max(0.0, min(1.0, 1 - (hi - raw[p][a]) / denominator)))
             for a in areas
         }
     out = []

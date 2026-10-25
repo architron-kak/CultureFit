@@ -9,6 +9,7 @@ sys.path.insert(0, str(ROOT))
 from dotenv import load_dotenv
 load_dotenv(ROOT / '.env')
 from culturefit.qloo import Qloo
+from culturefit.districts import CITIES
 
 async def run():
     client = Qloo()
@@ -17,7 +18,9 @@ async def run():
         if not hit:
             raise RuntimeError('Radiohead was not found')
         print('Search OK:', hit['name'], hit.get('subtype'))
-        for city, lat, lon, radius in [('Zurich',47.3717,8.5423,1200),('Almaty',43.2565,76.9455,1500)]:
+        for city, config in CITIES.items():
+            lat, lon = next(iter(config['areas'].values()))
+            radius = config['radius']
             places = await client.places_near(lat,lon,radius,[hit['entity_id']])
             print(city, 'places:', len(places))
             for e in places[:2]:

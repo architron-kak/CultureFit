@@ -1,7 +1,7 @@
 """Hand-made area centers (lat, lon). Coordinates are approximate: check them on a map."""
 CITIES = {
     "Zurich": {
-        "radius": 1200,
+        "radius": 700,
         "areas": {
             "Altstadt": (47.3717, 8.5423),
             "Oerlikon": (47.4110, 8.5450),

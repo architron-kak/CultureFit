@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from culturefit import main
 from culturefit import llm
 from culturefit.qloo import Qloo
-from culturefit.scoring import is_venue, rank_areas
+from culturefit.scoring import evidence, good_tags, is_venue, rank_areas
 
 
 def venue(name='Cafe', affinity=.8, tags=()):
@@ -133,6 +133,57 @@ def test_scoring_and_invalid_affinity():
     assert [a['group_fit'] for a in r['areas']]==[100,0]
     assert rank_areas({'You':{'A':[venue(affinity=None)]}})['areas'][0]['group_fit'] is None
     with pytest.raises(ValueError):rank_areas({})
+
+
+@pytest.mark.parametrize('lower, expected', [(.79, 50), (.81, 75), (.829, 99)])
+def test_small_differences_are_not_stretched_to_zero(lower, expected):
+    result = rank_areas({'You': {'Best': [venue(affinity=.83)], 'Other': [venue(affinity=lower)]}})
+    assert result['areas'][0]['scores']['You'] == 100
+    assert result['areas'][1]['scores']['You'] == expected
+    assert result['areas'][1]['gives_up']['You'] == 100 - expected
+    assert result['low_confidence_for'] == ['You']
+
+
+def test_equal_affinities_are_tied_best_with_warning():
+    result = rank_areas({'You': {'A': [venue()], 'B': [venue()]}})
+    assert [area['group_fit'] for area in result['areas']] == [100, 100]
+    assert result['low_confidence_for'] == ['You']
+
+
+def test_group_fit_remains_the_weakest_person_with_minimum_spread():
+    result = rank_areas({
+        'You': {'A': [venue(affinity=.83)], 'B': [venue(affinity=.79)]},
+        'Partner': {'A': [venue(affinity=.78)], 'B': [venue(affinity=.80)]},
+    })
+    for area in result['areas']:
+        assert area['group_fit'] == min(area['scores'].values())
+    assert set(result['low_confidence_for']) == {'You', 'Partner'}
+    assert all(area['group_fit'] > 0 for area in result['areas'])
+
+
+def test_utility_tags_are_removed_before_the_evidence_limit():
+    entry = venue(tags=['Mastercard', 'Visa', 'Wheelchair accessible parking lot',
+                        'Chf 10 to chf 20', 'Nfc mobile payments', 'Ok to order just coffee',
+                        'Wi-Fi', 'Reservations', 'Delivery', 'Laundry',
+                        'Art', 'Coffee', 'Bohemian', 'Live music', 'Jazz', 'Historic'])
+    assert evidence([entry])[0]['tags'] == ['Art', 'Coffee', 'Bohemian', 'Live music', 'Jazz']
+    assert good_tags(venue(tags=['Improvisation', 'Cashmere', 'Jazz', 'jazz'])) == ['Improvisation', 'Cashmere', 'Jazz']
+
+
+def test_clean_tags_reach_the_explanation(client, monkeypatch):
+    async def places(*args):
+        return [venue(tags=['Visa', 'Wi-Fi', 'Art', 'Coffee'])]
+    prompts = []
+    async def capture(prompt):
+        prompts.append(prompt)
+        return None, 'none'
+    monkeypatch.setattr(main.qloo, 'places_near', places)
+    monkeypatch.setattr(llm, 'ask', capture)
+    result = dict(events(client.post('/api/rank', json=payload())))['result']
+    assert result['radius'] == 700
+    assert result['areas'][0]['evidence']['You'][0]['tags'] == ['Art', 'Coffee']
+    assert prompts and 'Visa' not in prompts[0] and 'Wi-Fi' not in prompts[0]
+    assert 'Art' in prompts[0] and 'Coffee' in prompts[0]
 
 
 def test_plural_and_cyrillic_filters():
