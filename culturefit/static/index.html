@@ -2,57 +2,1262 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#f6f5f2">
-  <meta name="description" content="Find your kind of neighborhood. Turn the music, films, and things you love into places you can explore together.">
-  <title>CultureFit — Find your kind of place</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="/styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b0f10">
+  <meta name="description" content="A night map of your cultural taste. Find common ground in the neighborhoods and places around you.">
+  <title>CultureFit — Night taste map</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
   <script defer src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script defer src="/app.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0f10;
+      --text: #e8eeee;
+      --muted: #a3b5b7;
+      --teal: #2dd4bf;
+      --coral: #fb7185;
+      --amber: #f5a524;
+      --line: rgba(157, 189, 191, .19);
+      --glass: rgba(13, 22, 24, .94);
+      --radius: 20px;
+      --sans: 'Inter', system-ui, sans-serif;
+      --serif: 'Fraunces', Georgia, serif;
+      --mono: 'JetBrains Mono', ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+    body { background: var(--bg); color: var(--text); font: 13px/1.55 var(--sans); }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+    button:disabled, input:disabled, select:disabled, textarea:disabled { opacity: .55; cursor: wait; }
+    button, a { touch-action: manipulation; }
+    a { color: inherit; text-decoration: none; }
+    p, h1, h2, h3 { margin: 0; }
+    [hidden] { display: none !important; }
+    :focus-visible { outline: 2px solid var(--teal); outline-offset: 4px; }
+    input:focus-visible, select:focus-visible, textarea:focus-visible { outline-offset: 2px; }
+    ::selection { background: #2dd4bf40; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
+    .skip-link { position: fixed; top: -100px; left: 24px; z-index: 50; padding: 12px; background: var(--bg); }
+    .skip-link:focus { top: 16px; }
+    #map { position: fixed; inset: 0; background: var(--bg); }
+    .map-vignette { position: fixed; inset: 0; pointer-events: none; background: linear-gradient(180deg, #0b0f10c9, transparent 22%, transparent 73%, #0b0f10e6), linear-gradient(90deg, #0b0f1040, transparent 50%); }
+    .map-fallback { position: fixed; inset: 0; display: grid; place-items: center; padding: 120px 370px; background: radial-gradient(ellipse at 55% 35%, #142d2d 0, #0b0f10 65%); }
+    .map-fallback p { max-width: 280px; color: var(--muted); text-align: center; }
+    .map-fallback strong { display: block; margin-bottom: 10px; color: var(--text); font-family: var(--serif); font-size: 26px; }
+    .masthead { position: fixed; inset: 0 0 auto; z-index: 3; height: 88px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; gap: 24px; pointer-events: none; }
+    .masthead > * { pointer-events: auto; }
+    .brand { display: flex; align-items: center; gap: 11px; }
+    .brand-mark { width: 34px; height: 34px; color: var(--teal); }
+    .brand-mark svg { width: 100%; height: 100%; stroke: currentColor; stroke-width: 1.2; fill: none; }
+    .brand-name { font-family: var(--serif); font-size: 25px; letter-spacing: -.7px; }
+    .brand-name span { color: var(--teal); }
+    .brand-tag { padding-left: 15px; margin-left: 5px; border-left: 1px solid var(--line); font: 9px var(--mono); letter-spacing: 1.8px; color: var(--muted); }
+    .location-readout { display: flex; align-items: center; gap: 9px; color: #c4d4d5; font-size: 11px; }
+    .location-readout .dot { box-shadow: 0 0 13px #2dd4bf70; }
+    .location-readout small { color: var(--muted); font: 10px var(--mono); margin-left: 10px; }
+    .powered { font: 10px var(--mono); color: var(--muted); display: flex; align-items: center; gap: 9px; }
+    .powered strong { color: #dce8e8; font-weight: 500; }
+    .dot { width: 6px; height: 6px; display: inline-block; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+    .glass { background: var(--glass); border: 1px solid var(--line); box-shadow: 0 18px 60px #0005, inset 0 1px 0 #d0eeee05; -webkit-backdrop-filter: blur(22px); backdrop-filter: blur(22px); }
+    .control-panel { position: fixed; left: 24px; top: 92px; bottom: 110px; z-index: 4; width: 312px; border-radius: var(--radius); overflow: auto; scrollbar-width: thin; scrollbar-color: #436060 transparent; }
+    .panel-grip { display: none; }
+    .panel-inner { padding: 24px; }
+    .eyebrow { font: 9px var(--mono); letter-spacing: 1.6px; text-transform: uppercase; color: var(--muted); }
+    .panel-intro { margin-bottom: 22px; }
+    .panel-intro .eyebrow { display: flex; align-items: center; gap: 8px; color: var(--teal); }
+    .panel-intro h1 { font: 400 29px/1.12 var(--serif); letter-spacing: -.8px; margin: 11px 0 10px; }
+    .panel-intro h1 em { color: var(--teal); font-style: normal; }
+    .panel-intro p { color: var(--muted); font-size: 11px; line-height: 1.8; }
+    label { display: block; font-size: 11px; font-weight: 500; }
+    .field-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .field-heading small { font: 9px var(--mono); color: var(--muted); }
+    select, textarea, input { width: 100%; border: 1px solid #344548; background: #0b1416; color: var(--text); border-radius: 9px; padding: 10px 11px; }
+    select { height: 41px; font-size: 12px; margin-bottom: 20px; }
+    textarea { resize: vertical; min-height: 77px; max-height: 150px; font-size: 11px; line-height: 1.8; display: block; }
+    input { font-size: 11px; height: 41px; }
+    input::placeholder, textarea::placeholder { color: #94a9ad; opacity: 1; }
+    .person-field { margin-bottom: 17px; }
+    .person-name { display: flex; align-items: center; gap: 8px; }
+    .person-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); }
+    .coral .person-dot { background: var(--coral); }
+    .teal textarea { border-color: #2c5653; }
+    .coral textarea { border-color: #5c3a43; }
+    .field-foot { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 9px; margin-top: 6px; }
+    .field-foot .over-limit { color: var(--coral); }
+    .primary { width: 100%; padding: 13px 12px; border: 1px solid var(--teal); background: var(--teal); color: #082622; border-radius: 9px; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: space-between; gap: 8px; box-shadow: 0 0 28px #2dd4bf12; }
+    .primary:hover:not(:disabled) { background: #65e2d1; }
+    .primary svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; flex-shrink: 0; }
+    .taste-hint { color: var(--muted); font-size: 9px; margin: 9px 0 0; text-align: center; }
+    .refine-section { border-top: 1px solid var(--line); padding-top: 19px; margin-top: 21px; }
+    .refine-section h2 { font: 400 20px var(--serif); margin-bottom: 6px; }
+    .refine-section > p { color: var(--muted); font-size: 10px; margin-bottom: 12px; }
+    .refine-row { display: flex; gap: 7px; }
+    .refine-row input { min-width: 0; }
+    .secondary { border: 1px solid #40615c; color: var(--teal); background: #142a29; border-radius: 8px; padding: 0 12px; font-size: 11px; }
+    .secondary:hover:not(:disabled) { background: #1d3935; }
+    .constraint-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 11px; }
+    .constraint-chip { display: flex; align-items: center; gap: 6px; color: #f7c368; font-size: 10px; border: 1px solid #715225; background: #362813; border-radius: 5px; padding: 4px 6px; max-width: 100%; overflow-wrap: anywhere; }
+    .constraint-chip button { background: none; border: 0; color: #f7c368; min-height: 23px; min-width: 23px; padding: 0; font-size: 15px; }
+    .reset-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+    .reset-row span { color: var(--muted); font-size: 9px; }
+    .text-button { border: 0; background: none; color: #c6d5d6; text-decoration: underline; text-underline-offset: 4px; font-size: 10px; padding: 7px 0; }
+    .field-message { font-size: 10px; margin-top: 12px; color: var(--amber); line-height: 1.7; }
+    .center-story { position: fixed; left: 365px; right: 385px; top: 38%; text-align: center; z-index: 2; pointer-events: none; }
+    .center-story .eyebrow { font-size: 9px; color: #b3c7c8; }
+    .center-story h2 { font: 400 clamp(35px, 4.5vw, 62px)/1.05 var(--serif); letter-spacing: -2px; margin: 17px auto; text-shadow: 0 3px 30px #000; }
+    .center-story h2 span { color: var(--teal); display: block; }
+    .center-story p { max-width: 285px; margin: auto; color: #bdced0; font-size: 11px; line-height: 1.9; text-shadow: 0 1px 10px #000; }
+    .crosshair { width: 38px; height: 38px; border: 1px solid #82c5bc55; border-radius: 50%; margin: 0 auto 22px; position: relative; }
+    .crosshair:before, .crosshair:after { content: ''; position: absolute; background: #8be0d0; }
+    .crosshair:before { width: 1px; height: 10px; top: 13px; left: 18px; }
+    .crosshair:after { width: 10px; height: 1px; left: 13px; top: 18px; }
+    .map-legend { position: fixed; bottom: 116px; left: 360px; z-index: 2; display: flex; align-items: center; gap: 10px; background: #0b1416e6; border: 1px solid var(--line); border-radius: 8px; padding: 9px 13px; color: #c0d0d1; font: 9px var(--mono); }
+    .legend-gradient { width: 80px; height: 3px; background: linear-gradient(90deg, var(--coral),var(--amber),var(--teal)); border-radius: 2px; }
+    .map-settings-toggle { color: #c0d0d1; background: none; border: 0; border-left: 1px solid var(--line); padding: 2px 0 2px 10px; font: inherit; }
+    .basemap-status { position: fixed; z-index: 3; left: 360px; right: 385px; top: 96px; padding: 9px 12px; border: 1px solid #795920; border-radius: 8px; color: #f7c368; background: #332715f5; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 10px; }
+    .basemap-status button { background: none; border: 0; color: #f7c368; text-decoration: underline; text-underline-offset: 3px; padding: 4px; font: inherit; white-space: nowrap; }
+    .basemap-dialog { width: 420px; max-width: calc(100vw - 30px); border-radius: 18px; padding: 26px; background: #101e20; color: var(--text); border: 1px solid #3a5558; }
+    .basemap-dialog::backdrop { background: #040b0dbb; backdrop-filter: blur(5px); }
+    .basemap-dialog h2 { font: 400 28px var(--serif); padding-right: 25px; margin-bottom: 12px; }
+    .basemap-dialog p { color: #b5c9cb; font-size: 12px; line-height: 1.8; margin-bottom: 17px; }
+    .basemap-dialog a { color: var(--teal); text-decoration: underline; }
+    .basemap-dialog input { margin: 8px 0 14px; }
+    .basemap-dialog .dialog-actions { display: flex; align-items: center; gap: 16px; }
+    .basemap-dialog .primary { width: auto; padding: 10px 16px; }
+    .north { position: fixed; top: 107px; left: 363px; z-index: 2; font: 10px var(--mono); color: #afc6c8; display: flex; align-items: center; gap: 9px; pointer-events: none; }
+    .north i { height: 22px; width: 1px; background: linear-gradient(var(--teal),transparent); transform: rotate(20deg); }
+    .results-panel { position: fixed; top: 92px; right: 24px; bottom: 110px; z-index: 4; width: 340px; display: flex; flex-direction: column; border-radius: var(--radius); overflow: hidden; }
+    .results-heading { padding: 22px 21px 15px; border-bottom: 1px solid var(--line); flex-shrink: 0; }
+    .results-heading .eyebrow { display: flex; justify-content: space-between; gap: 8px; font-size: 9px; }
+    .results-heading h2 { font: 400 28px var(--serif); letter-spacing: -.6px; margin: 7px 0 9px; }
+    .score-note { color: #afc0c2; font-size: 10px; line-height: 1.7; }
+    .people-legend { display: flex; gap: 17px; margin-top: 12px; font-size: 10px; }
+    .people-legend span { display: flex; align-items: center; gap: 6px; }
+    .teal-text { color: var(--teal); }
+    .coral-text { color: var(--coral); }
+    .results-scroll { flex: 1; min-height: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: #436060 transparent; padding: 15px 14px 18px; }
+    .notice { color: #f7c368; background: #332715; border: 1px solid #795920; border-radius: 9px; font-size: 11px; line-height: 1.7; padding: 11px; margin-bottom: 12px; }
+    .state-box { border: 1px dashed #405252; border-radius: 12px; padding: 24px 18px; color: var(--muted); text-align: center; }
+    .state-box h3 { font: 400 22px var(--serif); color: var(--text); margin: 10px 0; }
+    .state-box p { font-size: 11px; line-height: 1.8; }
+    .state-icon { color: var(--teal); font-size: 25px; }
+    .result-card { padding: 15px; margin-bottom: 11px; border: 1px solid #314547; border-radius: 12px; background: #0c1719cc; transition: border-color .2s, background .2s; }
+    .result-card:hover { border-color: #688d87; background: #132325; }
+    .result-card.selected { border-color: var(--teal); box-shadow: 0 0 0 1px #2dd4bf24; }
+    .card-button { padding: 0; background: none; color: inherit; border: 0; display: block; text-align: left; width: 100%; }
+    .card-overline { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--muted); font: 9px var(--mono); margin-bottom: 9px; }
+    .card-overline .best-label { color: var(--teal); }
+    .card-title-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+    .card-title-row h3 { font: 400 24px/1.12 var(--serif); letter-spacing: -.5px; }
+    .group-score { font: 500 30px/1 var(--serif); color: var(--teal); text-align: right; white-space: nowrap; }
+    .group-score small { display: block; font: 8px var(--mono); color: var(--muted); margin-top: 5px; }
+    .no-data { color: var(--muted); font-size: 11px; }
+    .score-labels { display: flex; justify-content: space-between; gap: 8px; font-size: 10px; margin-top: 17px; }
+    .score-labels b { font-weight: 500; }
+    .tug-bar { height: 5px; border-radius: 5px; display: flex; overflow: hidden; margin-top: 7px; background: #28383a; position: relative; }
+    .tug-bar i { height: 100%; display: block; }
+    .tug-teal { background: var(--teal); }
+    .tug-coral { background: var(--coral); }
+    .tug-gap { background: var(--amber); }
+    .gap-note { color: #f7bd58; font-size: 9px; line-height: 1.7; margin-top: 7px; }
+    .personal-sacrifice { margin-top: 4px; color: var(--muted); font-size: 9px; line-height: 1.6; }
+    .venues-heading { color: #afc1c3; font-size: 9px; display: flex; align-items: center; gap: 6px; margin: 15px 0 7px; }
+    .venues-heading:before { content: ''; background: currentColor; height: 4px; width: 4px; border-radius: 50%; }
+    .venues-list { list-style: none; padding: 0; margin: 0; }
+    .venue-item + .venue-item { margin-top: 10px; }
+    .venue-row { display: flex; justify-content: space-between; gap: 10px; color: #dce7e7; font-size: 11px; }
+    .affinity { font: 9px var(--mono); color: #b8cbce; white-space: nowrap; margin-top: 3px; }
+    .tag-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+    .tag { background: #1c2d2f; border: 1px solid #31494c; color: #bbced0; padding: 2px 5px; border-radius: 4px; font-size: 8px; overflow-wrap: anywhere; }
+    .card-footer { display: flex; justify-content: space-between; gap: 6px; font-size: 9px; margin-top: 13px; border-top: 1px solid var(--line); padding-top: 11px; color: #b4c7c9; }
+    .card-footer span:last-child { color: var(--teal); }
+    .explanation-box { border-top: 1px solid var(--line); margin: 18px 0 0; padding: 16px 4px 0; }
+    .explanation-box .eyebrow { margin-bottom: 10px; color: var(--teal); }
+    #expl { white-space: pre-wrap; font-size: 11px; color: #bbcdcf; line-height: 1.9; overflow-wrap: anywhere; }
+    .log-panel { position: fixed; bottom: 24px; left: 24px; right: 24px; z-index: 6; border-radius: 13px; padding: 12px 16px; }
+    .log-header { display: flex; align-items: center; gap: 10px; }
+    .log-title { color: var(--teal); font: 9px var(--mono); letter-spacing: 1px; white-space: nowrap; }
+    .log-title .dot { margin-right: 7px; width: 5px; height: 5px; }
+    .log-state { font: 9px var(--mono); color: #b4c7c9; padding-left: 10px; border-left: 1px solid var(--line); min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .log-toggle { margin-left: auto; background: none; border: 0; color: #bdcdcf; font: 9px var(--mono); padding: 4px 0 4px 10px; }
+    .log-window { margin-top: 4px; height: 23px; overflow: auto; scroll-behavior: smooth; scrollbar-width: none; }
+    .log-window.expanded { height: 150px; scrollbar-width: thin; }
+    #trace { list-style: none; padding: 0; margin: 0; font: 10px/23px var(--mono); color: #c3d3d5; }
+    #trace li { white-space: pre-wrap; overflow-wrap: anywhere; }
+    .log-window:not(.expanded) #trace li { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #trace time { color: #98b0b4; margin-right: 12px; }
+    #trace .log-error { color: #fda8b5; }
+    #trace .log-success { color: var(--teal); }
+    #trace .log-warning { color: #f6bd5c; }
+    .maplibregl-ctrl-bottom-right { bottom: 113px !important; right: 385px !important; }
+    .maplibregl-ctrl-attrib { background: #0b1416ed !important; color: #a8bdc0 !important; font-size: 8px !important; }
+    .maplibregl-ctrl-attrib a { color: #beced0 !important; }
+    .maplibregl-ctrl-attrib-button { filter: invert(1); }
+    .maplibregl-ctrl-top-right { top: 102px !important; right: 385px !important; }
+    .maplibregl-ctrl-group { background: #142326 !important; border: 1px solid #385052 !important; border-radius: 9px !important; box-shadow: 0 8px 20px #0004 !important; overflow: hidden; }
+    .maplibregl-ctrl-group button { width: 31px !important; height: 31px !important; border-color: #385052 !important; }
+    .maplibregl-ctrl-icon { filter: invert(1); }
+    .map-marker { min-width: 34px; height: 34px; padding: 0 8px; border: 1px solid #2dd4bf99; background: #102d2beF; color: #a0f6e9; border-radius: 50%; font: 11px var(--mono); box-shadow: 0 0 25px #2dd4bf30, 0 3px 15px #000; }
+    .map-marker:hover, .map-marker.active { background: var(--teal); color: #082622; border-color: #9cf6e8; }
+    .map-marker.is-missing { border-color: #91a7aa; color: #c4d4d6; background: #1b2b2d; }
+    .drawer { position: fixed; right: 24px; top: 92px; bottom: 110px; width: 505px; max-width: calc(100vw - 48px); z-index: 8; border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden; background: #0e1a1cf5; }
+    .drawer-header { padding: 23px 24px 19px; border-bottom: 1px solid var(--line); position: relative; flex-shrink: 0; }
+    .drawer-header .eyebrow { color: var(--teal); padding-right: 30px; }
+    .drawer-header h2 { font: 400 36px/1.1 var(--serif); letter-spacing: -1px; margin: 10px 30px 10px 0; overflow-wrap: anywhere; }
+    .drawer-header p { font-size: 11px; color: var(--muted); max-width: 360px; }
+    .close-drawer { position: absolute; right: 17px; top: 17px; width: 35px; height: 35px; border-radius: 50%; background: #1a2b2e; border: 1px solid #3b5355; color: var(--text); font-size: 21px; }
+    .drawer-body { padding: 20px 24px 25px; overflow: auto; scrollbar-width: thin; scrollbar-color: #436060 transparent; }
+    .person-tabs { display: flex; gap: 8px; margin-bottom: 17px; flex-wrap: wrap; }
+    .person-tabs button { color: #c2d2d3; border: 1px solid #3c5154; border-radius: 7px; padding: 7px 13px; background: #142427; font-size: 11px; }
+    .person-tabs button[aria-pressed="true"] { border-color: var(--teal); color: var(--teal); }
+    .person-tabs button.partner[aria-pressed="true"] { border-color: var(--coral); color: var(--coral); }
+    .diagram-scroll { overflow-x: auto; scrollbar-width: thin; border: 1px solid var(--line); background: #091416; border-radius: 12px; }
+    .why-diagram { display: block; width: 100%; }
+    .why-diagram text { font-family: var(--sans); }
+    .diagram-note { color: #b3c9cc; font-size: 10px; line-height: 1.9; margin: 13px 0; }
+    .why-record { border-top: 1px solid var(--line); padding-top: 15px; margin-top: 17px; }
+    .why-record h3 { font: 400 21px var(--serif); margin-bottom: 8px; }
+    .why-record p { font-size: 10px; color: var(--muted); line-height: 1.9; }
+    .raw-why { margin-top: 13px; }
+    .raw-why summary { font-size: 10px; color: #bed0d2; cursor: pointer; }
+    .raw-why pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 200px; overflow: auto; padding: 10px; margin-top: 10px; color: #b3c9cc; font: 9px/1.7 var(--mono); border: 1px solid var(--line); border-radius: 7px; }
+    .sheet-nav { display: none; }
+    .reveal { animation: card-in .35s ease both; }
+    .busy .log-title .dot { animation: pulse 1.5s ease-in-out infinite; }
+    .busy .primary .search-glyph { animation: rotate 5s linear infinite; }
+    @keyframes card-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulse { 50% { opacity: .4; } }
+    @keyframes rotate { to { transform: rotate(360deg); } }
+    @media (min-width: 1600px) {
+      .control-panel { width: 330px; }
+      .results-panel { width: 365px; }
+      .map-legend, .north { left: 379px; }
+      .basemap-status { left: 379px; right: 410px; }
+      .center-story { left: 390px; right: 410px; }
+      .maplibregl-ctrl-top-right, .maplibregl-ctrl-bottom-right { right: 410px !important; }
+    }
+    @media (max-width: 1150px) and (min-width: 761px) {
+      .control-panel { width: 280px; left: 18px; }
+      .panel-inner { padding: 21px; }
+      .results-panel { width: 305px; right: 18px; }
+      .center-story { left: 320px; right: 340px; }
+      .center-story h2 { font-size: 39px; }
+      .location-readout small, .brand-tag { display: none; }
+      .map-legend, .north { left: 320px; }
+      .basemap-status { left: 320px; right: 340px; }
+      .maplibregl-ctrl-top-right, .maplibregl-ctrl-bottom-right { right: 340px !important; }
+    }
+    @media (max-width: 760px) {
+      .masthead { height: 72px; padding: 0 19px; gap: 12px; }
+      .brand-name { font-size: 23px; }
+      .brand-mark { width: 29px; height: 29px; }
+      .brand-tag, .powered, .location-readout small { display: none; }
+      .location-readout { font-size: 10px; }
+      .map-vignette { background: linear-gradient(180deg,#0b0f10dd,transparent 22%,transparent 55%,#0b0f10bb); }
+      .center-story { left: 24px; right: 24px; top: 20%; }
+      .center-story h2 { font-size: 39px; letter-spacing: -1.3px; margin: 10px auto; }
+      .center-story p { font-size: 10px; max-width: 240px; }
+      .center-story .eyebrow { font-size: 8px; }
+      .crosshair { display: none; }
+      .control-panel, .results-panel { top: auto; bottom: 103px; left: 10px; right: 10px; width: auto; max-height: 54dvh; border-radius: 22px 22px 12px 12px; z-index: 4; }
+      .control-panel { padding-bottom: 6px; }
+      .control-panel.sheet-hidden, .results-panel.sheet-hidden { display: none; }
+      .panel-grip { display: block; height: 4px; width: 32px; border-radius: 8px; background: #607a7d; margin: 10px auto 0; }
+      .panel-inner { padding: 17px 21px 20px; }
+      .panel-intro { margin-bottom: 17px; }
+      .panel-intro h1 { font-size: 26px; margin: 9px 0; }
+      .panel-intro h1 br { display: none; }
+      .panel-intro p { font-size: 11px; }
+      .panel-intro .eyebrow { font-size: 8px; }
+      .field-heading { margin-bottom: 7px; }
+      select { margin-bottom: 15px; }
+      textarea, input, select { font-size: 16px; }
+      textarea { min-height: 75px; }
+      .field-foot { font-size: 10px; }
+      .primary { font-size: 13px; min-height: 47px; }
+      .refine-row .secondary { min-width: 58px; }
+      .control-panel.compact { max-height: 112px; overflow: hidden; }
+      .control-panel.compact .panel-intro, .control-panel.compact .fields, .control-panel.compact .taste-hint, .control-panel.compact .refine-section { display: none; }
+      .sheet-nav { display: flex; position: fixed; bottom: 56px; left: 10px; right: 10px; height: 41px; z-index: 10; border-radius: 10px; padding: 4px; gap: 4px; }
+      .sheet-nav button { flex: 1; border: 0; border-radius: 7px; background: transparent; color: #bdcfd0; font-size: 10px; }
+      .sheet-nav button[aria-selected="true"] { background: #26423e; color: #9af4e5; }
+      .sheet-nav .mobile-result-count { color: var(--amber); margin-left: 5px; font: 9px var(--mono); }
+      .results-heading { padding: 17px 18px 13px; }
+      .results-heading h2 { font-size: 26px; }
+      .results-heading .score-note { font-size: 10px; }
+      .results-scroll { padding: 12px; }
+      .results-panel { max-height: 64dvh; }
+      .results-heading .people-legend { margin-top: 9px; }
+      .result-card { padding: 17px; }
+      .card-title-row h3 { font-size: 25px; }
+      .venue-row { font-size: 12px; }
+      .tag { font-size: 9px; }
+      .log-panel { bottom: 7px; left: 10px; right: 10px; padding: 8px 12px; border-radius: 9px; }
+      .log-header { gap: 8px; }
+      .log-title, .log-state, .log-toggle { font-size: 8px; }
+      .log-window { height: 0; margin: 0; }
+      .log-window.expanded { height: 140px; margin-top: 7px; }
+      #trace { font-size: 9px; }
+      .log-state { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+      .log-toggle { flex-shrink: 0; }
+      .map-legend { left: 18px; bottom: auto; top: 92px; font-size: 8px; padding: 7px 9px; }
+      .legend-gradient { width: 50px; }
+      .basemap-status { left: 18px; right: 70px; top: 142px; font-size: 9px; padding: 7px 9px; }
+      .north { display: none; }
+      .maplibregl-ctrl-top-right { top: 78px !important; right: 10px !important; }
+      .maplibregl-ctrl-bottom-right { bottom: auto !important; top: 72px !important; right: 62px !important; }
+      .maplibregl-ctrl-attrib { font-size: 7px !important; }
+      .drawer { top: auto; bottom: 103px; left: 10px; right: 10px; width: auto; max-width: none; height: 74dvh; z-index: 12; border-radius: 22px 22px 12px 12px; }
+      .drawer-header { padding: 22px 20px 16px; }
+      .drawer-header h2 { font-size: 30px; }
+      .drawer-body { padding: 17px; }
+      .map-fallback { padding: 100px 25px 55dvh; }
+      .map-fallback strong { font-size: 22px; }
+      .map-fallback p { font-size: 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *:before, *:after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+    }
+  </style>
 </head>
 <body>
   <a class="skip-link" href="#preferences">Skip to preferences</a>
-  <header class="topbar">
-    <a class="brand" href="/" aria-label="CultureFit home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 21 8v8l-9 5-9-5V8Z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg></span>CultureFit<span class="brand-dot">.</span></a>
-    <nav aria-label="Main navigation"><a class="nav-active" href="#preferences">Discover</a><a href="#results-section">Your matches</a><a href="#how-it-works">How it works</a></nav>
-    <span class="powered"><span class="status-dot"></span>Powered by Qloo</span>
+  <div id="map" role="region" aria-label="Night map of neighborhoods"></div>
+  <div class="map-vignette" aria-hidden="true"></div>
+  <div id="map-fallback" class="map-fallback" hidden><p><strong>The map is taking a night off.</strong>You can still explore neighborhood results and their evidence.</p></div>
+
+  <header class="masthead">
+    <a class="brand" href="/" aria-label="CultureFit home">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 34 34"><circle cx="17" cy="17" r="12"/><ellipse cx="17" cy="17" rx="5" ry="12" transform="rotate(45 17 17)"/><path d="M4 17h26M17 3v28"/><circle cx="17" cy="17" r="2" fill="currentColor"/></svg></span>
+      <span class="brand-name">CultureFit<span>.</span></span>
+      <span class="brand-tag">NIGHT TASTE MAP</span>
+    </a>
+    <div class="location-readout"><span class="dot"></span><span id="map-city">Zurich</span><small id="city-coordinates">47.377° N / 8.540° E</small></div>
+    <span class="powered">CULTURAL SIGNALS BY <strong>Qloo</strong> ↗</span>
   </header>
 
-  <main class="page-shell">
-    <section class="intro" aria-labelledby="page-title">
-      <div><div class="eyebrow"><span class="little-star">✳</span> A LITTLE TASTE. A NEW PERSPECTIVE.</div><h1 id="page-title">Your tastes. <span>Your kind of place.</span></h1><p>Find a neighborhood that feels like you. Or the two of you.</p></div>
-      <div class="intro-note"><span class="overlap-orbit" aria-hidden="true"><i></i><i></i></span><span>Different tastes.<br><strong>Common ground.</strong></span></div>
+  <main>
+    <section class="control-panel glass" id="preferences" aria-labelledby="preferences-title">
+      <div class="panel-grip" aria-hidden="true"></div>
+      <div class="panel-inner">
+        <div class="panel-intro"><p class="eyebrow"><span class="dot"></span>FOLLOW YOUR FREQUENCY</p><h1 id="preferences-title">Different tastes.<br><em>Common ground.</em></h1><p>Map the things you love to a neighborhood you can share.</p></div>
+        <form id="taste-form">
+          <div class="fields">
+            <label class="field-heading" for="city">Start with a city <small>01 / LOCATION</small></label>
+            <select id="city" required aria-label="City"></select>
+            <div class="person-field teal"><div class="field-heading"><label class="person-name" for="f1"><span class="person-dot"></span>Your frequency</label><small>YOU</small></div><textarea id="f1" rows="2" maxlength="720" aria-describedby="favorites-help" placeholder="Movies, music, food, games…">Blade Runner, Radiohead, Studio Ghibli</textarea><div class="field-foot"><span>Separate favorites with commas</span><span id="count1">3 / 6</span></div></div>
+            <div class="person-field coral"><div class="field-heading"><label class="person-name" for="f2"><span class="person-dot"></span>Another perspective</label><small>OPTIONAL</small></div><textarea id="f2" rows="2" maxlength="720" aria-describedby="favorites-help" placeholder="Their favorite things…">Metallica, Peaky Blinders, Guinness</textarea><div class="field-foot"><span>Partner, friend, or roommate</span><span id="count2">3 / 6</span></div></div>
+          </div>
+          <button class="primary" id="search-button" type="submit"><span class="search-glyph" aria-hidden="true">✳</span><span id="search-label">Find our neighborhood</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5"/></svg></button>
+          <p class="taste-hint" id="favorites-help">Up to six favorites per person. Leave the second field blank to go solo.</p>
+        </form>
+        <section class="refine-section" aria-labelledby="refine-title"><h2 id="refine-title">Fine-tune the night.</h2><p>More calm. Fewer clubs. Tell us what matters.</p><form class="refine-row" id="refine-form"><label class="sr-only" for="ref">Refine your search</label><input id="ref" maxlength="300" placeholder="e.g. no bars, avoid Altstadt"><button class="secondary" type="submit">Apply</button></form><div id="cons" class="constraint-chips" aria-label="Active constraints"></div><div class="reset-row"><span>Constraints apply to venue evidence.</span><button class="text-button" id="reset-button" type="button">Reset</button></div></section>
+        <p id="field-message" class="field-message" role="status" hidden></p>
+      </div>
     </section>
 
-    <div class="workspace">
-      <aside class="sidebar">
-        <section class="panel preferences" id="preferences" aria-labelledby="preferences-title">
-          <div class="panel-heading"><span class="step-number">01</span><h2 id="preferences-title">Set your coordinates</h2><span class="small-arrow" aria-hidden="true">↗</span></div>
-          <div class="field"><label for="city">Where are we looking?</label><div class="select-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg><select id="city" aria-describedby="city-hint"></select></div><p class="field-hint" id="city-hint">Choose a city to explore.</p></div>
-          <div class="taste-profile you-profile"><div class="profile-heading"><span class="avatar avatar-you" aria-hidden="true">Y</span><div><label for="f1">Your corner of culture</label><span>What are you into?</span></div><span class="profile-label">YOU</span></div><textarea id="f1" rows="3" maxlength="720" aria-describedby="favorites-hint" placeholder="Radiohead, Blade Runner, specialty coffee…">Blade Runner, Radiohead, Studio Ghibli</textarea><div class="profile-bottom"><span>Music, movies, food & more</span><span class="taste-count" id="count1">3 / 6</span></div></div>
-          <div class="taste-profile partner-profile"><div class="profile-heading"><span class="avatar avatar-partner" aria-hidden="true">P</span><div><label for="f2">Bring another perspective</label><span>A partner, friend, or roommate</span></div><span class="profile-label">OPTIONAL</span></div><textarea id="f2" rows="3" maxlength="720" aria-describedby="favorites-hint" placeholder="Their favorites, separated by commas…">Metallica, Peaky Blinders, Guinness</textarea><div class="profile-bottom"><span>Find your common ground</span><span class="taste-count" id="count2">3 / 6</span></div></div>
-          <p class="field-hint favorites-hint" id="favorites-hint">Separate favorites with commas. Up to 6 per person.</p>
-          <button class="primary-button" id="search-button" type="button" onclick="run()"><span class="button-icon" aria-hidden="true">✳</span><span id="search-label">Find our neighborhood</span><span aria-hidden="true">↗</span></button>
-          <p class="search-note">A little of you. A little of them. A place that fits.</p>
-        </section>
+    <div class="center-story" id="center-story"><div class="crosshair" aria-hidden="true"></div><p class="eyebrow">YOUR TASTE IS A COMPASS</p><h2>A city of possibilities.<span>Find your coordinates.</span></h2><p>Music you replay. Films you feel.<br>Places where both of you belong.</p></div>
+    <div class="north" aria-hidden="true"><i></i>N</div>
+    <div class="map-legend" aria-label="Relative group fit: coral is lower, amber is intermediate, teal is higher"><span>LOWER</span><i class="legend-gradient" aria-hidden="true"></i><span>HIGHER FIT</span><button class="map-settings-toggle" id="map-settings" type="button" aria-label="Configure CARTO basemap">Map setup</button></div>
+    <div class="basemap-status" id="basemap-status" role="status"><span>CARTO needs a map key to display streets.</span><button type="button" id="setup-basemap">Add key ↗</button></div>
 
-        <section class="panel refine-panel" aria-labelledby="refine-title"><div class="panel-heading"><span class="step-number">02</span><h2 id="refine-title">Make it more you</h2></div><p class="panel-copy">Something quieter? Fewer bars?<br>Tell us what matters.</p><label class="sr-only" for="ref">Refine your search</label><input id="ref" maxlength="300" placeholder="e.g. quiet streets, no clubs"><div class="refine-actions"><button class="secondary-button" type="button" onclick="refine()">Apply <span aria-hidden="true">↗</span></button><button class="text-button" type="button" onclick="reset()">Reset</button></div><p id="cons" class="constraint-list" aria-live="polite"></p></section>
-        <div class="sidebar-footnote"><span aria-hidden="true">↳</span><p>Good neighborhoods have character.<br>Let’s find yours.</p></div>
-      </aside>
+    <section class="results-panel glass" id="results-panel" aria-labelledby="results-title" hidden>
+      <div class="panel-grip" aria-hidden="true"></div>
+      <div class="results-heading"><p class="eyebrow"><span>YOUR COMMON GROUND</span><span id="result-count">EXPLORING</span></p><h2 id="results-title">Where your worlds meet.</h2><p class="score-note">Scores are relative among compared areas (0–100), <strong>not percentages</strong>. Group fit = the weakest person’s score.</p><div class="people-legend" id="people-legend"><span class="teal-text">● You</span><span class="coral-text">● Partner</span><span style="color:var(--amber)">● Gap</span></div></div>
+      <div class="results-scroll" id="results-scroll"><div id="confidence-notice" class="notice" role="status" hidden></div><div id="results-state" class="state-box"><span class="state-icon" aria-hidden="true">⌖</span><h3>Connecting your worlds.</h3><p>Matching your favorites and exploring nearby places.</p></div><div id="results" aria-busy="false"></div><div class="explanation-box" id="explanation-box" hidden><p class="eyebrow" id="explanation-label">THE STORY BEHIND THE SIGNAL</p><p id="expl"></p></div></div>
+    </section>
 
-      <section class="explore-column" aria-label="Neighborhood exploration">
-        <section class="map-panel" aria-label="Neighborhood map"><div id="map" role="region" aria-label="Interactive map"></div><div class="map-title"><span class="map-live-dot"></span><span id="map-city">Zurich</span><span class="map-label-divider"></span><span id="map-caption">A new point of view</span></div><div class="map-bottom"><span class="map-caption"><span class="mini-location" aria-hidden="true">⌖</span> Taste meets geography</span><div class="map-legend"><span>Lower fit</span><i></i><span>Higher fit</span></div></div><div class="map-fallback" id="map-fallback" hidden><span aria-hidden="true">⌖</span><strong>Map unavailable</strong><p>You can still compare neighborhoods below.</p></div></section>
+    <aside class="drawer glass" id="why-drawer" role="dialog" aria-modal="false" aria-labelledby="drawer-title" tabindex="-1" hidden>
+      <div class="drawer-header"><p class="eyebrow">FOLLOW THE EVIDENCE</p><button class="close-drawer" id="close-drawer" type="button" aria-label="Close neighborhood details">×</button><h2 id="drawer-title"></h2><p id="drawer-summary"></p></div>
+      <div class="drawer-body"><div class="person-tabs" id="why-people" role="group" aria-label="Choose a person's evidence"></div><div class="diagram-scroll" id="diagram-scroll"></div><p class="diagram-note" id="diagram-note"></p><div id="why-records"></div></div>
+    </aside>
 
-        <div class="results-layout">
-          <section id="results-section" class="results-column" aria-labelledby="results-title"><div class="section-heading"><div class="heading-line"><span class="eyebrow">THE SHORTLIST</span><span class="result-count" id="result-count">Ready when you are</span></div><h2 id="results-title">Places with your kind of energy<span>.</span></h2></div><div class="empty-state" id="empty-state"><div class="empty-art" aria-hidden="true"><span class="empty-orbit"></span><svg viewBox="0 0 80 80"><path d="m40 10 25 14v28L40 67 15 52V24Z"/><path d="m15 24 25 15 25-15M40 39v28"/><circle cx="40" cy="25" r="5"/></svg><i>✳</i></div><h3>Your next chapter starts here.</h3><p>Add a few favorites, pick a city, and we’ll connect the dots between your taste and its neighborhoods.</p><span class="empty-kicker">YOUR TASTE → REAL PLACES</span></div><div id="results" aria-live="polite" aria-busy="false"></div><p class="score-note" id="score-note" hidden>Scores compare these neighborhoods with each other. They are not match percentages. Group fit follows the person with the lower score.</p></section>
-
-          <aside class="context-column"><section class="panel insight-panel" aria-labelledby="insight-title"><div class="insight-icon" aria-hidden="true">✳</div><div class="heading-line"><span class="eyebrow">THE REASON BEHIND IT</span><span class="source-label" id="explanation-source" hidden></span></div><h2 id="insight-title">More than a pin<br>on a map.</h2><p id="expl" class="explanation">The places we find tell a story. Your explanation will connect your tastes to the neighborhoods that bring them together.</p><div class="insight-foot"><span aria-hidden="true">↗</span> Rooted in real places</div></section>
-          <section class="panel journey-panel" id="how-it-works" aria-labelledby="journey-title"><div class="journey-heading"><h2 id="journey-title">Connecting the dots</h2><span class="journey-status" id="journey-status">Standby</span></div><p class="panel-copy">Find your interests. Explore nearby places. Compare the possibilities.</p><details id="trace-details"><summary><span class="status-dot"></span><span id="progress-label">Follow the search</span><span class="details-chevron" aria-hidden="true">⌄</span></summary><ol id="trace" aria-live="polite"></ol></details></section></aside>
-        </div>
-      </section>
-    </div>
-    <footer class="footer"><span>CultureFit<span class="brand-dot">.</span> <span class="footer-divider">/</span> A place for your people.</span><span id="coverage">Two cities. Endless possibilities.</span></footer>
+    <nav class="sheet-nav glass" aria-label="Mobile panels"><button id="tab-taste" type="button" aria-selected="true">Your taste</button><button id="tab-map" type="button" aria-selected="false">Map</button><button id="tab-results" type="button" aria-selected="false">Matches <span class="mobile-result-count" id="mobile-result-count">0</span></button></nav>
+    <section class="log-panel glass" aria-label="Live agent log"><div class="log-header"><span class="log-title"><span class="dot"></span>AGENT LIVE</span><span class="log-state" id="log-state" role="status">Waiting for your signal</span><button class="log-toggle" id="log-toggle" type="button" aria-expanded="false" aria-controls="log-window">History ↗</button></div><div class="log-window" id="log-window"><ol id="trace" aria-live="polite" aria-relevant="additions"></ol></div></section>
+    <dialog class="basemap-dialog" id="basemap-dialog" aria-labelledby="basemap-title">
+      <button class="close-drawer" id="close-basemap" type="button" aria-label="Close basemap settings">×</button>
+      <h2 id="basemap-title">Bring the streets to life.</h2>
+      <p>CARTO Dark Matter now requires a browser map key. <a href="https://carto.com/basemaps/apikey" target="_blank" rel="noopener noreferrer">Get a key from CARTO ↗</a></p>
+      <form id="basemap-form"><label for="basemap-key">CARTO basemap key</label><input id="basemap-key" type="password" maxlength="512" autocomplete="off" spellcheck="false" required><p>The key is saved only in this browser and sent directly to CARTO. It is not sent to the CultureFit API.</p><div class="dialog-actions"><button class="primary" type="submit">Save map key</button><button class="text-button" id="clear-basemap" type="button">Clear saved key</button></div></form>
+    </dialog>
   </main>
+  <script>
+    'use strict';
+
+    const $ = selector => document.querySelector(selector);
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const mobile = window.matchMedia('(max-width: 760px)');
+    const colors = ['#2dd4bf', '#fb7185'];
+    let basemapKey = '';
+    try { basemapKey = localStorage.getItem('culturefit.cartoKey') || ''; } catch { /* Session-only mode. */ }
+    const cityViews = {
+      Zurich: { center: [8.54, 47.377], zoom: 12, coordinates: '47.377° N / 8.540° E' },
+      Almaty: { center: [76.934, 43.25], zoom: 11.7, coordinates: '43.250° N / 76.934° E' }
+    };
+    let map, ready = false, busy = false, lastResult = null;
+    let constraints = { exclude: [], avoid_areas: [] };
+    let activePeople = [], markers = [], revealTimers = [], generation = 0;
+    let selectedArea = null, drawerPerson = null, drawerReturnFocus = null;
+    let rawWhyLogged = false, currentSheet = 'taste', hadError = false;
+
+    function element(tag, className = '', text) {
+      const node = document.createElement(tag);
+      if (className) node.className = className;
+      if (text !== undefined) node.textContent = String(text);
+      return node;
+    }
+
+    function numericScore(value) {
+      return typeof value === 'number' && Number.isFinite(value)
+        ? Math.max(0, Math.min(100, value)) : null;
+    }
+
+    function scoreText(value) {
+      const number = numericScore(value);
+      return number === null ? '—' : String(Math.round(number));
+    }
+
+    function favorites(text) {
+      return text.split(',').map(value => value.trim()).filter(Boolean);
+    }
+
+    function getPeople() {
+      const people = [{ name: 'You', favorites: favorites($('#f1').value) }];
+      if ($('#f2').value.trim()) {
+        people.push({ name: 'Partner', favorites: favorites($('#f2').value) });
+      }
+      if (!people[0].favorites.length) throw new Error('Add at least one of your favorites.');
+      if (people.some(person => person.favorites.length > 6)) {
+        throw new Error('Use up to six favorites per person.');
+      }
+      return people;
+    }
+
+    function updateCounts() {
+      ['f1', 'f2'].forEach((id, index) => {
+        const count = favorites($('#' + id).value).length;
+        const counter = $('#count' + (index + 1));
+        counter.textContent = `${count} / 6`;
+        counter.classList.toggle('over-limit', count > 6);
+      });
+    }
+
+    function log(message, kind = '') {
+      const row = element('li', kind ? 'log-' + kind : '');
+      const time = element('time', '', new Date().toLocaleTimeString('en-GB'));
+      row.append(time, document.createTextNode(String(message)));
+      $('#trace').append(row);
+      $('#log-state').textContent = String(message);
+      const window = $('#log-window');
+      window.scrollTop = window.scrollHeight;
+    }
+
+    function setBusy(value) {
+      busy = value;
+      document.body.classList.toggle('busy', value);
+      $('#preferences').querySelectorAll('button, input, select, textarea').forEach(node => {
+        node.disabled = value;
+      });
+      $('#search-label').textContent = value ? 'Following your signal…' : 'Find our neighborhood';
+      $('#results').setAttribute('aria-busy', String(value));
+    }
+
+    function message(text = '') {
+      $('#field-message').textContent = text;
+      $('#field-message').hidden = !text;
+    }
+
+    function setSheet(sheet) {
+      currentSheet = sheet;
+      $('#preferences').classList.toggle('sheet-hidden', sheet !== 'taste');
+      $('#results-panel').classList.toggle('sheet-hidden', sheet !== 'results');
+      if (sheet === 'results') $('#results-panel').hidden = false;
+      ['taste', 'map', 'results'].forEach(name => {
+        $('#tab-' + name).setAttribute('aria-selected', String(name === sheet));
+      });
+      if (map) requestAnimationFrame(() => map.resize());
+    }
+
+    function showState(title, detail, icon = '⌖') {
+      $('#results-state').hidden = false;
+      $('#results-state .state-icon').textContent = icon;
+      $('#results-state h3').textContent = title;
+      $('#results-state p').textContent = detail;
+    }
+
+    function report(error) {
+      hadError = true;
+      const text = error instanceof Error ? error.message : String(error);
+      message(text);
+      log(text, 'error');
+      if (!lastResult) {
+        $('#results-panel').hidden = false;
+        showState('A signal interrupted.', text + ' You can adjust your inputs and try again.', '↻');
+      }
+    }
+
+    async function checked(url, options) {
+      const response = await fetch(url, options);
+      if (!response.ok) {
+        let detail = `Request failed (HTTP ${response.status}).`;
+        try {
+          const data = await response.json();
+          if (typeof data.detail === 'string') detail = data.detail;
+          else if (Array.isArray(data.detail)) {
+            detail = data.detail.map(item => item.msg).filter(Boolean).join('; ') || detail;
+          }
+        } catch { /* Keep the HTTP status if the response is not JSON. */ }
+        throw new Error(detail);
+      }
+      return response;
+    }
+
+    function renderConstraints() {
+      const container = $('#cons');
+      container.replaceChildren();
+      [['exclude', 'No '], ['avoid_areas', 'Skip ']].forEach(([type, prefix]) => {
+        constraints[type].forEach(value => {
+          const chip = element('span', 'constraint-chip');
+          const remove = element('button', '', '×');
+          remove.type = 'button';
+          remove.setAttribute('aria-label', `Remove constraint: ${prefix}${value}`);
+          remove.addEventListener('click', () => {
+            if (busy) return;
+            constraints[type] = constraints[type].filter(item => item !== value);
+            renderConstraints();
+            if (lastResult) run();
+          });
+          chip.append(element('span', '', prefix + value), remove);
+          container.append(chip);
+        });
+      });
+    }
+
+    function clearMap() {
+      revealTimers.forEach(clearTimeout);
+      revealTimers = [];
+      markers.forEach(marker => marker.remove());
+      markers = [];
+      if (ready && map?.getSource('areas')) {
+        map.getSource('areas').setData({ type: 'FeatureCollection', features: [] });
+      }
+    }
+
+    function clearResults() {
+      generation++;
+      closeDrawer(false);
+      lastResult = null;
+      selectedArea = null;
+      clearMap();
+      $('#results').replaceChildren();
+      $('#confidence-notice').hidden = true;
+      $('#explanation-box').hidden = true;
+      $('#expl').textContent = '';
+      $('#result-count').textContent = 'EXPLORING';
+      $('#mobile-result-count').textContent = '0';
+    }
+
+    function updateCity() {
+      const city = $('#city').value;
+      $('#map-city').textContent = city;
+      const view = cityViews[city];
+      $('#city-coordinates').textContent = view ? view.coordinates : '';
+      if (map && view) {
+        map.flyTo({ center: view.center, zoom: view.zoom, duration: reducedMotion.matches ? 0 : 750 });
+      }
+    }
+
+    function mapFallback() {
+      $('#map-fallback').hidden = false;
+      $('#center-story').hidden = true;
+      $('#basemap-status').hidden = true;
+      log('Map unavailable. Neighborhood cards and evidence still work.', 'warning');
+    }
+
+    function cartoTiles(key) {
+      const query = key ? '?key=' + encodeURIComponent(key) : '';
+      return ['a', 'b', 'c', 'd'].map(subdomain =>
+        `https://${subdomain}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png${query}`);
+    }
+
+    function applyBasemap() {
+      $('#basemap-status').hidden = Boolean(basemapKey);
+      if (!map || !ready) return;
+      if (map.getLayer('night-basemap')) map.removeLayer('night-basemap');
+      if (map.getSource('carto')) map.removeSource('carto');
+      if (!basemapKey) return;
+      map.addSource('carto', {
+        type: 'raster', tiles: cartoTiles(basemapKey), tileSize: 256,
+        attribution: '© OpenStreetMap contributors © CARTO'
+      });
+      map.addLayer({ id: 'night-basemap', type: 'raster', source: 'carto' },
+        map.getLayer('area-glow') ? 'area-glow' : undefined);
+    }
+
+    async function init() {
+      const cities = await (await checked('/api/cities')).json();
+      Object.keys(cities).forEach(city => {
+        const option = element('option', '', city);
+        option.value = city;
+        $('#city').append(option);
+      });
+      updateCity();
+      if (typeof maplibregl === 'undefined') { mapFallback(); return; }
+      try {
+        const view = cityViews[$('#city').value] || cityViews.Zurich;
+        map = new maplibregl.Map({
+          container: 'map',
+          center: view.center,
+          zoom: view.zoom,
+          attributionControl: true,
+          style: {
+            version: 8,
+            sources: {},
+            layers: [{ id: 'night-background', type: 'background', paint: { 'background-color': '#0b0f10' } }]
+          }
+        });
+        map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
+        map.on('load', () => {
+          ready = true;
+          applyBasemap();
+          if (lastResult) draw(lastResult);
+        });
+      } catch (error) {
+        console.warn('CultureFit map initialization failed:', error.message);
+        map = null;
+        mapFallback();
+      }
+    }
+
+    function circle(lat, lon, radius) {
+      const coordinates = [];
+      for (let index = 0; index <= 64; index++) {
+        const angle = index / 64 * 2 * Math.PI;
+        coordinates.push([
+          lon + radius * Math.cos(angle) / (111320 * Math.cos(lat * Math.PI / 180)),
+          lat + radius * Math.sin(angle) / 110540
+        ]);
+      }
+      return [coordinates];
+    }
+
+    function addMapLayers() {
+      if (map.getSource('areas')) return;
+      map.addSource('areas', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      const color = ['case', ['get', 'missing'], '#98afb3',
+        ['interpolate', ['linear'], ['get', 'fit'], 0, '#fb7185', 50, '#f5a524', 100, '#2dd4bf']];
+      map.addLayer({
+        id: 'area-glow', type: 'line', source: 'areas',
+        paint: { 'line-color': color, 'line-width': 12, 'line-blur': 7, 'line-opacity': .25 }
+      });
+      map.addLayer({
+        id: 'area-fill', type: 'fill', source: 'areas',
+        paint: { 'fill-color': color, 'fill-opacity': .12 }
+      });
+      map.addLayer({
+        id: 'area-outline', type: 'line', source: 'areas',
+        paint: { 'line-color': color, 'line-width': 1.2, 'line-opacity': .8 }
+      });
+      map.on('click', 'area-fill', event => {
+        const index = event.features?.[0]?.properties?.index;
+        if (index !== undefined) openDrawer(Number(index));
+      });
+      map.on('mouseenter', 'area-fill', () => { map.getCanvas().style.cursor = 'pointer'; });
+      map.on('mouseleave', 'area-fill', () => { map.getCanvas().style.cursor = ''; });
+    }
+
+    function animateScore(node, value, token = generation) {
+      if (numericScore(value) === null) { node.textContent = '—'; return; }
+      if (reducedMotion.matches) { node.textContent = scoreText(value); return; }
+      const start = performance.now();
+      function frame(now) {
+        if (token !== generation || !node.isConnected) return;
+        const progress = Math.min((now - start) / 550, 1);
+        node.textContent = String(Math.round(value * (1 - Math.pow(1 - progress, 3))));
+        if (progress < 1) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    function draw(data) {
+      if (!map || !ready) return;
+      clearMap();
+      addMapLayers();
+      const token = generation;
+      const collection = { type: 'FeatureCollection', features: [] };
+      const radius = Number(data.radius);
+      const areas = data.areas.map((area, index) => ({ area, index })).filter(({ area }) =>
+        Number.isFinite(area.lat) && Number.isFinite(area.lon) && Number.isFinite(radius) && radius > 0);
+      areas.forEach(({ area, index }, order) => {
+        const reveal = () => {
+          if (token !== generation) return;
+          collection.features.push({
+            type: 'Feature',
+            properties: { index, fit: numericScore(area.group_fit) ?? 0, missing: numericScore(area.group_fit) === null },
+            geometry: { type: 'Polygon', coordinates: circle(area.lat, area.lon, radius) }
+          });
+          map.getSource('areas').setData(collection);
+          const button = element('button', 'map-marker' + (numericScore(area.group_fit) === null ? ' is-missing' : ''));
+          button.type = 'button';
+          button.setAttribute('aria-label', `${area.area}: group fit ${scoreText(area.group_fit)}. Open evidence.`);
+          button.dataset.areaIndex = String(index);
+          button.addEventListener('click', event => { event.stopPropagation(); openDrawer(index); });
+          markers.push(new maplibregl.Marker({ element: button }).setLngLat([area.lon, area.lat]).addTo(map));
+          animateScore(button, numericScore(area.group_fit), token);
+        };
+        if (reducedMotion.matches) reveal();
+        else revealTimers.push(setTimeout(reveal, order * 140));
+      });
+      if (areas.length) {
+        const bounds = new maplibregl.LngLatBounds();
+        areas.forEach(({ area }) => bounds.extend([area.lon, area.lat]));
+        const padding = mobile.matches
+          ? { top: 125, bottom: 160, left: 45, right: 45 }
+          : { top: 130, bottom: 145, left: $('#preferences').offsetWidth + 65, right: $('#results-panel').offsetWidth + 65 };
+        map.fitBounds(bounds, { padding, maxZoom: 13, duration: reducedMotion.matches ? 0 : 850 });
+      }
+    }
+
+    function appendVenues(container, person, venues, personIndex) {
+      if (!Array.isArray(venues)) return;
+      const title = element('h4', 'venues-heading', 'PLACES FOR ' + person.toUpperCase());
+      title.style.color = colors[personIndex % colors.length];
+      container.append(title);
+      const list = element('ul', 'venues-list');
+      venues.slice(0, 2).forEach(venue => {
+        const item = element('li', 'venue-item');
+        const row = element('div', 'venue-row');
+        const affinity = typeof venue.affinity === 'number' && Number.isFinite(venue.affinity)
+          ? String(venue.affinity) : '—';
+        const metric = element('span', 'affinity', affinity);
+        metric.title = 'Qloo venue affinity, not a match percentage';
+        row.append(element('span', '', venue.name), metric);
+        item.append(row);
+        const tags = element('div', 'tag-list');
+        (Array.isArray(venue.tags) ? venue.tags : []).slice(0, 3).forEach(tag => tags.append(element('span', 'tag', tag)));
+        item.append(tags);
+        list.append(item);
+      });
+      if (!venues.length) list.append(element('li', 'no-data', 'No qualifying venue evidence.'));
+      container.append(list);
+    }
+
+    function createCard(area, index) {
+      const card = element('article', 'result-card');
+      card.id = 'area-' + index;
+      const button = element('button', 'card-button');
+      button.type = 'button';
+      button.setAttribute('aria-label', `Explore ${area.area} and its evidence`);
+      button.addEventListener('click', () => openDrawer(index));
+      const overline = element('span', 'card-overline');
+      overline.append(element('span', '', String(index + 1).padStart(2, '0')),
+        element('span', index === 0 ? 'best-label' : '', index === 0 && numericScore(area.group_fit) !== null ? 'CLOSEST COMMON GROUND' : 'NEIGHBORHOOD SIGNAL'));
+      const titleRow = element('span', 'card-title-row');
+      const title = element('h3', '', area.area);
+      const fit = element('span', numericScore(area.group_fit) === null ? 'no-data' : 'group-score');
+      const count = element('span', '', scoreText(area.group_fit));
+      if (numericScore(area.group_fit) === null) fit.textContent = 'Insufficient data';
+      else fit.append(count, element('small', '', 'GROUP FIT'));
+      titleRow.append(title, fit);
+      button.append(overline, titleRow);
+      card.append(button);
+      const scores = Object.entries(area.scores || {});
+      const labels = element('div', 'score-labels');
+      scores.forEach(([person, value], personIndex) => {
+        labels.append(element('span', personIndex ? 'coral-text' : 'teal-text', `${person}  ${scoreText(value)}`));
+      });
+      card.append(labels);
+      const bar = element('div', 'tug-bar');
+      const numbers = scores.map(([, value]) => numericScore(value));
+      if (numbers.length === 2 && numbers.every(value => value !== null)) {
+        const [first, second] = numbers;
+        const gap = Math.abs(first - second);
+        const total = first + second + gap;
+        [['tug-teal', first], ['tug-gap', gap], ['tug-coral', second]].forEach(([name, value]) => {
+          const segment = element('i', name);
+          segment.style.width = total > 0 ? (value / total * 100) + '%' : '0%';
+          bar.append(segment);
+        });
+        bar.setAttribute('role', 'img');
+        bar.setAttribute('aria-label', `${scores[0][0]} ${first}; ${scores[1][0]} ${second}; gap ${gap} relative points.`);
+        const lower = first <= second ? scores[0][0] : scores[1][0];
+        const note = gap ? `${lower} gives up ${gap} points against the other person here.` : 'Gives up 0 points between people. An even signal.';
+        card.append(bar, element('p', 'gap-note', note));
+      } else if (numbers.length === 1 && numbers[0] !== null) {
+        const segment = element('i', 'tug-teal');
+        segment.style.width = numbers[0] + '%';
+        bar.append(segment);
+        card.append(bar);
+      } else {
+        card.append(bar, element('p', 'no-data', 'Not enough evidence to compare both people.'));
+      }
+      // The between-person gap above is distinct from the API's loss versus each person's best area.
+      const sacrifice = Object.entries(area.gives_up || {}).map(([name, value]) =>
+        `${name}: ${numericScore(value) === null ? 'no data' : `gives up ${scoreText(value)}`} vs. their best area`).join(' · ');
+      card.append(element('p', 'personal-sacrifice', sacrifice));
+      Object.entries(area.evidence || {}).forEach(([person, venues], personIndex) => appendVenues(card, person, venues, personIndex));
+      const footer = element('div', 'card-footer');
+      footer.append(element('span', '', 'VENUES → TAGS → YOUR TASTE'), element('span', '', 'Explore why ↗'));
+      card.append(footer);
+      card.addEventListener('click', event => {
+        if (!event.target.closest('button')) openDrawer(index);
+      });
+      card._scoreNode = count;
+      return card;
+    }
+
+    function logRawWhy(data) {
+      if (rawWhyLogged) return;
+      for (const area of data.areas || []) {
+        for (const venues of Object.values(area.evidence || {})) {
+          for (const venue of venues || []) {
+            if (venue.why !== null && venue.why !== undefined) {
+              // Inspect the unmodified API object before the supported-shape parser reads it.
+              console.log('CultureFit raw venue.why:', venue.why);
+              rawWhyLogged = true;
+              return;
+            }
+          }
+        }
+      }
+    }
+
+    function show(data) {
+      clearResults();
+      lastResult = data;
+      logRawWhy(data);
+      $('#center-story').hidden = true;
+      $('#results-panel').hidden = false;
+      $('#results-state').hidden = data.areas.length > 0;
+      if (!data.areas.length) showState('No places in this signal.', 'Try different favorites or remove a constraint.', '⌖');
+      $('#result-count').textContent = `${data.areas.length} AREAS`;
+      $('#mobile-result-count').textContent = String(data.areas.length);
+      const people = Object.keys(data.areas[0]?.scores || {});
+      const legend = $('#people-legend');
+      legend.replaceChildren();
+      people.forEach((person, index) => legend.append(element('span', index ? 'coral-text' : 'teal-text', '● ' + person)));
+      if (people.length > 1) {
+        const gap = element('span', '', '● Gap');
+        gap.style.color = '#f5a524';
+        legend.append(gap);
+      }
+      const warning = $('#confidence-notice');
+      if (data.low_confidence_for?.length) {
+        warning.textContent = `Differences are small for ${data.low_confidence_for.join(', ')}. Judge by the venues, not the numbers.`;
+        warning.hidden = false;
+        log(warning.textContent, 'warning');
+      }
+      const token = generation;
+      data.areas.forEach((area, index) => {
+        const card = createCard(area, index);
+        $('#results').append(card);
+        if (!reducedMotion.matches) {
+          card.classList.add('reveal');
+          card.style.animationDelay = (index * 100) + 'ms';
+        }
+        animateScore(card._scoreNode, numericScore(area.group_fit), token);
+      });
+      if (ready) draw(data);
+      log(`Found ${data.areas.length} neighborhoods. Follow a card or map circle to its evidence.`, 'success');
+      if (mobile.matches) setSheet('results');
+    }
+
+    // Observed in a live Qloo response:
+    // { "signal.interests.entities": [{ "entity_id": "<UUID>", "score": 1 }] }
+    // These objects do not contain favorite names. Keep IDs; do not guess a name.
+    function whyLinks(why) {
+      if (!why || typeof why !== 'object' || Array.isArray(why)) return [];
+      const entries = why['signal.interests.entities'];
+      if (!Array.isArray(entries)) return [];
+      return entries.filter(entry => entry && typeof entry === 'object'
+        && typeof entry.entity_id === 'string' && entry.entity_id.length > 0
+        && typeof entry.score === 'number' && Number.isFinite(entry.score))
+        .map(entry => ({ entity_id: entry.entity_id, score: entry.score }));
+    }
+
+    function svgElement(tag, attributes = {}, text) {
+      const node = document.createElementNS('http://www.w3.org/2000/svg', tag);
+      Object.entries(attributes).forEach(([name, value]) => node.setAttribute(name, String(value)));
+      if (text !== undefined) node.textContent = String(text);
+      return node;
+    }
+
+    function svgNode(svg, x, y, width, label, color, fill = '#14282b') {
+      const group = svgElement('g');
+      group.append(svgElement('title', {}, label));
+      group.append(svgElement('rect', {
+        x, y: y - 17, width, height: 34, rx: 7,
+        fill, stroke: color, 'stroke-opacity': .6, 'stroke-width': 1
+      }));
+      const limit = Math.floor((width - 16) / 6.1);
+      const shortened = label.length > limit ? label.slice(0, limit - 1) + '…' : label;
+      group.append(svgElement('text', {
+        x: x + 8, y: y + 4, fill: '#e8eeee', 'font-size': 10.5
+      }, shortened));
+      svg.append(group);
+    }
+
+    function svgEdge(svg, x1, y1, x2, y2, color, dashed = false) {
+      svg.append(svgElement('path', {
+        d: `M ${x1} ${y1} C ${(x1+x2)/2} ${y1}, ${(x1+x2)/2} ${y2}, ${x2} ${y2}`,
+        fill: 'none', stroke: color, 'stroke-opacity': dashed ? .6 : .35,
+        'stroke-width': 1.1, ...(dashed ? { 'stroke-dasharray': '3 4' } : {})
+      }));
+    }
+
+    function renderDiagram(area, person) {
+      const evidence = area.evidence?.[person];
+      const allVenues = Array.isArray(evidence) ? evidence : [];
+      const venues = allVenues.slice(0, 6);
+      const personIndex = Object.keys(area.evidence || {}).indexOf(person);
+      const color = colors[Math.max(0, personIndex) % colors.length];
+      const inputs = new Map();
+      venues.forEach(venue => whyLinks(venue.why).forEach(link => {
+        if (!inputs.has(link.entity_id)) inputs.set(link.entity_id, inputs.size);
+      }));
+      let nextY = 90;
+      const positions = venues.map(venue => {
+        const tags = (Array.isArray(venue.tags) ? venue.tags : []).map(String);
+        const blockHeight = Math.max(tags.length, 1) * 43 + 30;
+        const position = { venue, tags, y: nextY + (Math.max(tags.length, 1) - 1) * 43 / 2, firstTagY: nextY };
+        nextY += blockHeight;
+        return position;
+      });
+      const height = Math.max(270, nextY + 20, 160 + inputs.size * 54);
+      const svg = svgElement('svg', {
+        viewBox: `0 0 440 ${height}`, class: 'why-diagram',
+        role: 'img', 'aria-labelledby': 'diagram-title diagram-description'
+      });
+      svg.append(svgElement('title', { id: 'diagram-title' }, `${area.area}: venue and tag evidence for ${person}`));
+      svg.append(svgElement('desc', { id: 'diagram-description' },
+        'Solid lines connect this area to returned venues and their tags. Dashed lines show input entity contributions reported by Qloo. IDs are not translated into favorite names.'));
+      [['AREA / INPUTS', 12], ['VENUES', 156], ['TAGS', 310]].forEach(([label, x]) => {
+        svg.append(svgElement('text', { x, y: 27, fill: '#a3b5b7', 'font-size': 9, 'letter-spacing': 1 }, label));
+      });
+      // Draw edges before nodes so labels remain readable.
+      positions.forEach(position => {
+        svgEdge(svg, 127, 66, 156, position.y, color);
+        position.tags.forEach((tag, index) => svgEdge(svg, 286, position.y, 310, position.firstTagY + index * 43, '#a3b5b7'));
+        whyLinks(position.venue.why).forEach(link => {
+          const inputY = 162 + inputs.get(link.entity_id) * 54;
+          svgEdge(svg, 127, inputY, 156, position.y, color, true);
+        });
+      });
+      svgNode(svg, 12, 66, 115, String(area.area), color, '#17302e');
+      inputs.forEach((index, id) => {
+        const y = 162 + index * 54;
+        svgNode(svg, 12, y, 115, 'ID ' + id, color);
+        const weights = [...new Set(venues.flatMap(venue => whyLinks(venue.why))
+          .filter(link => link.entity_id === id).map(link => link.score))];
+        svg.append(svgElement('text', { x: 14, y: y + 29, fill: '#b8d4d6', 'font-size': 8 },
+          'Reported weight: ' + weights.join(', ')));
+      });
+      positions.forEach(position => {
+        svgNode(svg, 156, position.y, 130, String(position.venue.name), color);
+        position.tags.forEach((tag, index) => svgNode(svg, 310, position.firstTagY + index * 43, 120, tag, '#597578', '#152427'));
+      });
+      if (!venues.length) {
+        svg.append(svgElement('text', { x: 156, y: 110, fill: '#a3b5b7', 'font-size': 10 }, 'No venue evidence returned.'));
+      }
+      $('#diagram-scroll').replaceChildren(svg);
+      $('#diagram-note').textContent = inputs.size
+        ? 'Solid lines: returned venues and their tags. Dashed lines: actual Qloo input-entity contributions. This response includes IDs, not favorite names, so no name-to-ID relationship is inferred. Full entity IDs and tag names appear below the diagram.'
+        : 'Solid lines connect returned venues and tags. No supported input-entity contribution links were returned for this person. Favorite-to-venue links are not inferred. Full labels appear below the diagram.';
+      if (allVenues.length > venues.length) {
+        $('#diagram-note').append(document.createTextNode(` Showing the first ${venues.length} of ${allVenues.length} venues.`));
+      }
+      renderWhyRecords(venues);
+    }
+
+    function renderWhyRecords(venues) {
+      const records = $('#why-records');
+      records.replaceChildren();
+      venues.forEach(venue => {
+        const record = element('section', 'why-record');
+        record.append(element('h3', '', venue.name));
+        const tags = element('div', 'tag-list');
+        (Array.isArray(venue.tags) ? venue.tags : []).forEach(tag => tags.append(element('span', 'tag', tag)));
+        record.append(tags);
+        const links = whyLinks(venue.why);
+        if (links.length) {
+          links.forEach(link => record.append(element('p', '',
+            `Input entity ${link.entity_id} → this venue. Reported contribution: ${link.score}.`)));
+        } else {
+          record.append(element('p', '', venue.why == null
+            ? 'Qloo did not return a why object for this venue.'
+            : 'No supported contribution links in this why object. The raw data is available below.'));
+        }
+        const affinity = typeof venue.affinity === 'number' && Number.isFinite(venue.affinity)
+          ? String(venue.affinity) : 'not returned';
+        record.append(element('p', '', 'Venue affinity: ' + affinity + '. This is distinct from the relative neighborhood score.'));
+        if (venue.why !== null && venue.why !== undefined) {
+          const details = element('details', 'raw-why');
+          details.append(element('summary', '', 'View raw Qloo why data'));
+          details.append(element('pre', '', JSON.stringify(venue.why, null, 2)));
+          record.append(details);
+        }
+        records.append(record);
+      });
+    }
+
+    function openDrawer(index, focus = true) {
+      const area = lastResult?.areas[index];
+      if (!area) return;
+      const wasClosed = $('#why-drawer').hidden;
+      if (wasClosed) drawerReturnFocus = document.activeElement;
+      selectedArea = index;
+      const names = Object.keys(area.evidence || {});
+      if (!names.includes(drawerPerson)) drawerPerson = names[0] || null;
+      $('#drawer-title').textContent = String(area.area);
+      const fit = numericScore(area.group_fit);
+      $('#drawer-summary').textContent = fit === null
+        ? 'Insufficient venue data for a complete group score. Explore the evidence that is available.'
+        : `Group fit ${Math.round(fit)} / 100, relative to the compared areas. The weakest person determines the group score.`;
+      const tabs = $('#why-people');
+      tabs.replaceChildren();
+      names.forEach((name, personIndex) => {
+        const tab = element('button', personIndex ? 'partner' : '', name);
+        tab.type = 'button';
+        tab.setAttribute('aria-pressed', String(name === drawerPerson));
+        tab.addEventListener('click', () => {
+          drawerPerson = name;
+          openDrawer(index, false);
+          [...tabs.children].find(node => node.textContent === name)?.focus();
+        });
+        tabs.append(tab);
+      });
+      renderDiagram(area, drawerPerson);
+      $('#why-drawer').hidden = false;
+      document.querySelectorAll('.result-card').forEach((card, cardIndex) => card.classList.toggle('selected', cardIndex === index));
+      markers.forEach(marker => marker.getElement().classList.toggle('active', Number(marker.getElement().dataset.areaIndex) === index));
+      if (focus && wasClosed) $('#close-drawer').focus();
+      if (map && Number.isFinite(area.lat) && Number.isFinite(area.lon)) {
+        map.flyTo({ center: [area.lon, area.lat], duration: reducedMotion.matches ? 0 : 650 });
+      }
+    }
+
+    function closeDrawer(restoreFocus = true) {
+      if ($('#why-drawer').hidden) return;
+      $('#why-drawer').hidden = true;
+      if (restoreFocus && drawerReturnFocus?.isConnected) drawerReturnFocus.focus();
+    }
+
+    function handle(block) {
+      let type = 'message';
+      const payload = [];
+      block.split(/\r?\n/).forEach(line => {
+        if (line.startsWith('event:')) type = line.slice(6).trim();
+        if (line.startsWith('data:')) payload.push(line.slice(5).trimStart());
+      });
+      if (!payload.length) return;
+      const data = JSON.parse(payload.join('\n'));
+      if (type === 'step') log(data.text);
+      else if (type === 'error') throw new Error(String(data.message));
+      else if (type === 'result') show(data);
+      else if (type === 'explanation') {
+        $('#expl').textContent = String(data.text);
+        const names = { gemini: 'GEMINI', openrouter: 'AI', template: 'VENUE NOTES' };
+        $('#explanation-label').textContent = 'THE STORY BEHIND THE SIGNAL / ' + (names[data.source] || 'EXPLANATION');
+        $('#explanation-box').hidden = false;
+        log('Your neighborhood story is ready.', 'success');
+      }
+    }
+
+    async function consumeStream(response) {
+      if (!response.headers.get('content-type')?.includes('text/event-stream')) {
+        throw new Error('Unexpected response. Expected a neighborhood event stream.');
+      }
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            buffer += decoder.decode();
+            if (buffer.trim()) handle(buffer);
+            break;
+          }
+          buffer += decoder.decode(value, { stream: true });
+          let match;
+          while ((match = /\r?\n\r?\n/.exec(buffer))) {
+            handle(buffer.slice(0, match.index));
+            buffer = buffer.slice(match.index + match[0].length);
+          }
+        }
+      } finally {
+        await reader.cancel();
+        reader.releaseLock();
+      }
+      if (!lastResult) throw new Error('The search ended without a result. Please try again.');
+    }
+
+    async function performRun(people) {
+      clearResults();
+      activePeople = people;
+      message();
+      $('#trace').replaceChildren();
+      $('#center-story').hidden = true;
+      $('#results-panel').hidden = false;
+      showState('Connecting your worlds.', 'Matching your favorites and exploring nearby places.');
+      log(`Tuning into ${$('#city').value}. ${people.length === 2 ? 'Two perspectives, one shared map.' : 'One taste profile, a city to explore.'}`);
+      const response = await checked('/api/rank', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          city: $('#city').value,
+          people,
+          exclude: constraints.exclude,
+          avoid_areas: constraints.avoid_areas
+        })
+      });
+      await consumeStream(response);
+    }
+
+    async function run() {
+      if (busy) return;
+      hadError = false;
+      let people;
+      try { people = getPeople(); } catch (error) { report(error); return; }
+      setBusy(true);
+      try {
+        await performRun(people);
+      } catch (error) {
+        report(error);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    async function refine() {
+      if (busy) return;
+      const text = $('#ref').value.trim();
+      if (!text) { $('#ref').focus(); return; }
+      let people;
+      try { people = getPeople(); } catch (error) { report(error); return; }
+      setBusy(true);
+      message();
+      hadError = false;
+      try {
+        log('Reading your refinement…');
+        const data = await (await checked('/api/refine', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ city: $('#city').value, text })
+        })).json();
+        constraints.exclude = [...new Set([...constraints.exclude, ...(data.exclude || [])])];
+        constraints.avoid_areas = [...new Set([...constraints.avoid_areas, ...(data.avoid_areas || [])])];
+        renderConstraints();
+        await performRun(people);
+        message(String(data.message));
+        log(data.message);
+      } catch (error) {
+        report(error);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    function reset() {
+      if (busy) return;
+      constraints = { exclude: [], avoid_areas: [] };
+      $('#ref').value = '';
+      renderConstraints();
+      if (lastResult) run();
+      else message('Constraints cleared. Ready for a new signal.');
+    }
+
+    $('#taste-form').addEventListener('submit', event => { event.preventDefault(); run(); });
+    $('#refine-form').addEventListener('submit', event => { event.preventDefault(); refine(); });
+    $('#reset-button').addEventListener('click', reset);
+    ['f1', 'f2'].forEach(id => $('#' + id).addEventListener('input', updateCounts));
+    $('#city').addEventListener('change', () => {
+      constraints = { exclude: [], avoid_areas: [] };
+      activePeople = [];
+      hadError = false;
+      clearResults();
+      renderConstraints();
+      message();
+      $('#ref').value = '';
+      $('#results-panel').hidden = true;
+      $('#center-story').hidden = !$('#map-fallback').hidden;
+      $('#trace').replaceChildren();
+      log('City changed. Waiting for your next signal.');
+      updateCity();
+      setSheet('taste');
+    });
+    $('#close-drawer').addEventListener('click', () => closeDrawer());
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !$('#basemap-dialog').open && !$('#why-drawer').hidden) closeDrawer();
+    });
+    function openBasemapSettings() {
+      $('#basemap-key').value = basemapKey;
+      $('#basemap-dialog').showModal();
+    }
+    $('#map-settings').addEventListener('click', openBasemapSettings);
+    $('#setup-basemap').addEventListener('click', openBasemapSettings);
+    $('#close-basemap').addEventListener('click', () => $('#basemap-dialog').close());
+    $('#basemap-form').addEventListener('submit', event => {
+      event.preventDefault();
+      basemapKey = $('#basemap-key').value.trim();
+      if (!basemapKey) return;
+      try { localStorage.setItem('culturefit.cartoKey', basemapKey); } catch {
+        message('Map key works for this session; browser storage is unavailable.');
+      }
+      applyBasemap();
+      $('#basemap-dialog').close();
+      log('CARTO basemap configured. Loading streets…');
+    });
+    $('#clear-basemap').addEventListener('click', () => {
+      basemapKey = '';
+      try { localStorage.removeItem('culturefit.cartoKey'); } catch { /* No stored key. */ }
+      $('#basemap-key').value = '';
+      applyBasemap();
+      $('#basemap-dialog').close();
+      log('Saved CARTO key cleared. Neighborhood overlays remain available.', 'warning');
+    });
+    $('#log-toggle').addEventListener('click', () => {
+      const expanded = $('#log-window').classList.toggle('expanded');
+      $('#log-toggle').setAttribute('aria-expanded', String(expanded));
+      $('#log-toggle').textContent = expanded ? 'Close history ↙' : 'History ↗';
+      $('#log-window').scrollTop = $('#log-window').scrollHeight;
+    });
+    ['taste', 'map', 'results'].forEach(sheet => $('#tab-' + sheet).addEventListener('click', () => {
+      closeDrawer(false);
+      if (sheet === 'results' && !lastResult && !busy && !hadError) {
+        showState('Your map is waiting.', 'Start with a city and a few favorites. Matches will appear here.');
+      }
+      setSheet(sheet);
+    }));
+    mobile.addEventListener('change', () => {
+      if (!mobile.matches) {
+        $('#preferences').classList.remove('sheet-hidden');
+        $('#results-panel').classList.remove('sheet-hidden');
+        if (!lastResult && !busy && !hadError) $('#results-panel').hidden = true;
+      } else setSheet(currentSheet);
+      if (map) map.resize();
+    });
+    reducedMotion.addEventListener('change', () => {
+      if (map) map.stop();
+      if (lastResult && ready) draw(lastResult);
+    });
+
+    updateCounts();
+    log('Waiting for your signal. Start with the things you love.');
+    setBusy(true);
+    // The inline script runs before deferred MapLibre. Wait for deferred scripts first.
+    function start() {
+      init().catch(report).finally(() => setBusy(false));
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', start, { once: true });
+    } else {
+      start();
+    }
+  </script>
 </body>
 </html>
