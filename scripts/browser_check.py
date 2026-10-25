@@ -6,6 +6,7 @@ from pathlib import Path
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
+(ROOT/'artifacts').mkdir(exist_ok=True)
 os.environ.setdefault('PLAYWRIGHT_BROWSERS_PATH','/tmp/culturefit-browsers')
 from fastapi.testclient import TestClient
 from playwright.sync_api import sync_playwright
@@ -84,11 +85,25 @@ with TestClient(main.app) as client, sync_playwright() as p:
     real.goto('http://culturefit.test/')
     real.wait_for_function('!busy')
     if real.evaluate('typeof maplibregl!=="undefined"'):
+        real.wait_for_function('ready && map.areTilesLoaded()',timeout=30000)
+    real.screenshot(path=str(ROOT/'artifacts/design-desktop-empty.png'),full_page=True)
+    if real.evaluate('typeof maplibregl!=="undefined"'):
         state['mode']='ok'
         real.evaluate('run()')
         real.wait_for_function('!busy')
         real.wait_for_function('ready && !!map.getSource("a")',timeout=30000)
+        real.wait_for_function('!map.isMoving() && map.areTilesLoaded()',timeout=30000)
         assert real.evaluate('map.getSource("a")._data.features.length')==7
+        real.screenshot(path=str(ROOT/'artifacts/design-desktop-results.png'),full_page=True)
+        assert real.evaluate('document.body.scrollWidth<=window.innerWidth')
+        real.locator('.map-pin').first.click()
+        assert real.locator('.result-card.area-selected').count()==1
+        real.set_viewport_size({'width':390,'height':844})
+        real.wait_for_function('!map.isMoving() && map.areTilesLoaded()',timeout=30000)
+        real.screenshot(path=str(ROOT/'artifacts/design-mobile-results.png'),full_page=True)
+        assert real.evaluate('document.body.scrollWidth<=window.innerWidth')
+        assert real.get_by_role('button',name='Find our neighborhood').is_visible()
+        print('PASS: desktop/mobile layouts have no horizontal overflow; map pins select result cards')
         print('PASS: real MapLibre loaded and rendered 7 area polygons')
     else:
         print('LIMITATION: CDN unavailable; map rendering not verified')

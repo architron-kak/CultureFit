@@ -101,6 +101,24 @@ def test_rules_clubs_and_areas():
     assert llm._rules('I love Altstadt',['Altstadt'])['avoid_areas']==[]
 
 
+def test_gemini_header_and_multiple_text_parts(monkeypatch):
+    real_client = httpx.AsyncClient
+    monkeypatch.setenv('GEMINI_API_KEY', 'test-gemini-key')
+
+    def handler(request):
+        assert request.headers['x-goog-api-key'] == 'test-gemini-key'
+        assert request.url.path.endswith(':generateContent')
+        assert json.loads(request.content)['contents'][0]['parts'][0]['text'] == 'Test prompt'
+        return httpx.Response(200, json={'candidates': [{'content': {'parts': [
+            {'text': 'internal reasoning', 'thought': True},
+            {'text': 'First '}, {'text': 'second'},
+        ]}}]})
+
+    monkeypatch.setattr(llm.httpx, 'AsyncClient', lambda **kwargs: real_client(
+        transport=httpx.MockTransport(handler), **kwargs))
+    assert asyncio.run(llm._gemini('Test prompt')) == 'First second'
+
+
 def test_missing_data_is_not_fifty():
     r=rank_areas({'You':{'A':[],'B':[venue()]},'Partner':{'A':[venue()],'B':[venue()]}})
     assert r['areas'][0]['area']=='B'
@@ -119,6 +137,8 @@ def test_scoring_and_invalid_affinity():
 
 def test_plural_and_cyrillic_filters():
     assert not is_venue(venue(tags=['Bars']), ['bar'])
+    assert not is_venue(venue(tags=['Bar']), ['bars'])
+    assert not is_venue(venue(tags=['Nightclub']), ['nightclubs'])
     assert not is_venue(venue(tags=['Nightclubs']), ['nightclub'])
     assert not is_venue(venue(name='Барная стойка'), ['бар'])
     assert is_venue(venue(name='Barbara'), ['bar'])

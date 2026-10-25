@@ -18,7 +18,9 @@ async def _gemini(prompt):
             json={"contents": [{"parts": [{"text": prompt}]}]},
         )
     r.raise_for_status()
-    return r.json()["candidates"][0]["content"]["parts"][0]["text"]
+    candidates = r.json().get("candidates") or []
+    parts = (candidates[0].get("content") or {}).get("parts", []) if candidates else []
+    return "".join(part.get("text", "") for part in parts if not part.get("thought")) or None
 
 
 async def _openrouter(prompt):

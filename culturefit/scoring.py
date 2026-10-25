@@ -23,7 +23,9 @@ def is_venue(e, exclude=()):
         if not word:
             continue
         if word.isascii():
-            pattern = rf'\b{re.escape(word)}(?:s|es)?\b'
+            # Gemini and users may supply plural categories ("bars", "clubs").
+            stem = word[:-1] if word.endswith('s') and not word.endswith('ss') else word
+            pattern = rf'\b{re.escape(stem)}(?:s|es)?\b'
         else:
             pattern = rf'\b{re.escape(word)}\w*'
         if re.search(pattern, text, re.I):

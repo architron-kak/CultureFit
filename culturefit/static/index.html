@@ -1,119 +1,58 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CultureFit</title>
-<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-<style>
-*{box-sizing:border-box}body{margin:0;font:15px/1.45 system-ui,sans-serif;background:#f6f7f6;color:#1d2321}
-header{padding:18px 20px 6px}h1{margin:0;font-size:22px}header p{margin:4px 0 0;color:#566}
-main{display:grid;grid-template-columns:minmax(300px,440px) 1fr;gap:14px;padding:14px 20px}
-@media(max-width:800px){main{grid-template-columns:1fr}}
-.card{background:#fff;border:1px solid #dde3e0;border-radius:10px;padding:12px;margin-bottom:12px}
-label{display:block;font-weight:600;margin:8px 0 3px}textarea,input,select{width:100%;padding:8px;border:1px solid #c5cdc9;border-radius:6px;font:inherit}
-button{margin-top:10px;padding:9px 14px;border:0;border-radius:6px;background:#0f766e;color:#fff;font:inherit;cursor:pointer}
-button:disabled{opacity:.6;cursor:wait}button.alt{background:#e3e9e6;color:#1d2321}#map{height:520px;border-radius:10px;position:sticky;top:14px}
-#trace{max-height:140px;overflow:auto;font:12px/1.4 ui-monospace,monospace;color:#566;margin:0;padding-left:16px}
-.bar{height:8px;border-radius:4px;background:#e3e9e6;overflow:hidden}.bar i{display:block;height:100%;background:#0f766e}
-.sm{color:#566;font-size:13px}.warn{color:#9a5b00}h3{margin:0 0 4px;font-size:16px}li{margin:2px 0}
-</style></head><body>
-<header><h1>CultureFit</h1><p>Find the neighborhood that fits your taste, or both of yours.</p></header>
-<main><div>
-<div class="card">
-<label>City</label><select id="city"></select>
-<label>Your favorites (movies, music, food, games, comma separated)</label>
-<textarea id="f1" rows="2">Blade Runner, Radiohead, Studio Ghibli</textarea>
-<label>Partner's favorites (optional, enables Group Fit)</label>
-<textarea id="f2" rows="2">Metallica, Peaky Blinders, Guinness</textarea>
-<button onclick="run()">Find our neighborhood</button>
-</div>
-<div class="card"><b>Agent steps</b><ol id="trace"></ol></div>
-<div class="card"><label style="margin-top:0">Refine</label>
-<input id="ref" placeholder="e.g. too noisy, no clubs">
-<button onclick="refine()">Apply</button> <button class="alt" onclick="reset()">Reset</button>
-<p class="sm" id="cons"></p></div>
-<div class="card"><b>Why</b><p id="expl" class="sm" style="white-space:pre-wrap"></p></div>
-<div id="results"></div>
-</div><div id="map"></div></main>
-<script>
-const $=s=>document.querySelector(s),esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let st={exclude:[],avoid:[]},map,ready=false,busy=false;
-function setBusy(value){busy=value;document.querySelectorAll("button,input,textarea,select").forEach(el=>el.disabled=value);}
-function report(error){$("#trace").insertAdjacentHTML("beforeend",`<li class="warn">${esc(error.message||error)}</li>`);}
-async function checked(url,options){const r=await fetch(url,options);if(!r.ok){let message=`HTTP ${r.status}`;try{const d=await r.json();message=typeof d.detail==="string"?d.detail:(d.detail||[]).map(e=>e.msg).join("; ")||message;}catch{}throw new Error(message);}return r;}
-const fav=t=>t.split(",").map(s=>s.trim()).filter(Boolean);
-async function init(){
- const c=await (await checked("/api/cities")).json();
- $("#city").innerHTML=Object.keys(c).map(k=>`<option>${esc(k)}</option>`).join("");
- if(typeof maplibregl==="undefined"){$("#map").textContent="Map unavailable. You can still compare neighborhoods.";return;}
- map=new maplibregl.Map({container:"map",center:[8.54,47.37],zoom:11,style:{version:8,
-  sources:{o:{type:"raster",tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors"}},
-  layers:[{id:"o",type:"raster",source:"o"}]}});
- map.on("load",()=>ready=true);
-}
-function circle(lat,lon,r){const p=[];for(let i=0;i<=48;i++){const a=i/48*2*Math.PI;
- p.push([lon+r*Math.cos(a)/(111320*Math.cos(lat*Math.PI/180)),lat+r*Math.sin(a)/110540]);}return [p];}
-function draw(d){
- if(!map)return;
- const fc={type:"FeatureCollection",features:d.areas.map(a=>({type:"Feature",properties:{fit:a.group_fit??0,area:a.area},geometry:{type:"Polygon",coordinates:circle(a.lat,a.lon,d.radius)}}))};
- if(map.getSource("a"))map.getSource("a").setData(fc);else{
-  map.addSource("a",{type:"geojson",data:fc});
-  map.addLayer({id:"f",type:"fill",source:"a",paint:{"fill-opacity":.5,"fill-color":["interpolate",["linear"],["get","fit"],0,"#c8d6d4",100,"#0f766e"]}});
-  map.addLayer({id:"l",type:"line",source:"a",paint:{"line-color":"#0f766e","line-width":1.5}});
-  map.on("click","f",e=>new maplibregl.Popup().setLngLat(e.lngLat).setText(e.features[0].properties.area+": "+e.features[0].properties.fit).addTo(map));
- }
- const b=new maplibregl.LngLatBounds();d.areas.forEach(a=>b.extend([a.lon,a.lat]));map.fitBounds(b,{padding:80,maxZoom:13});
-}
-function show(d){
- $("#results").innerHTML=(d.low_confidence_for.length?`<div class="card warn">Differences between areas are small for: ${esc(d.low_confidence_for.join(", "))}. Judge by the venues, not the numbers.</div>`:"")+
- (d.insufficient_data_for?.length?`<div class="card warn">Insufficient venue data for: ${esc(d.insufficient_data_for.join(", "))}. Areas with missing data are shown last.</div>`:"")+
- `<p class="sm">Scores are relative among the compared areas (0-100), not a percentage match. Group fit = the weakest person's score.</p>`+
- d.areas.map(a=>`<div class="card"><h3>${esc(a.area)}</h3>
- <div class="bar"><i style="width:${a.group_fit??0}%"></i></div>
- <p class="sm">Group fit ${a.group_fit??"insufficient data"} · weakest: ${esc(a.weakest_person??"—")} · ${Object.entries(a.scores).map(([p,s])=>`${esc(p)} ${s??"insufficient data"} (gives up ${a.gives_up[p]??"—"})`).join(" · ")}</p>
- ${Object.entries(a.evidence).map(([p,ev])=>`<b class="sm">${esc(p)}</b><ul>${ev.map(e=>`<li>${esc(e.name)} <span class="sm">${esc(e.affinity)} · ${e.tags.map(esc).join(", ")}</span></li>`).join("")||"<li class='sm'>no strong venues</li>"}</ul>`).join("")}</div>`).join("");
- if(map){ready?draw(d):map.once("load",()=>draw(d));}
-}
-function handle(block){
- const lines=block.split(/\r?\n/),event=lines.find(l=>l.startsWith("event:"));
- const payload=lines.filter(l=>l.startsWith("data:")).map(l=>l.slice(5).trimStart()).join("\n");
- if(!payload)return;const ev=event?event.slice(6).trim():"message",d=JSON.parse(payload);
- if(ev=="step")$("#trace").insertAdjacentHTML("beforeend",`<li>${esc(d.text)}</li>`);
- else if(ev=="error")throw new Error(d.message);
- else if(ev=="result")show(d);
- else if(ev=="explanation")$("#expl").textContent=d.text;
-}
-async function performRun(){
- const people=[{name:"You",favorites:fav($("#f1").value)}];
- if($("#f2").value.trim())people.push({name:"Partner",favorites:fav($("#f2").value)});
- if(!people[0].favorites.length)throw new Error("Add some favorites first");
- if(people.some(p=>p.favorites.length>6))throw new Error("Use at most 6 favorites per person");
- $("#trace").innerHTML="";$("#results").innerHTML="";$("#expl").textContent="";
- if(map?.getSource("a"))map.getSource("a").setData({type:"FeatureCollection",features:[]});
- $("#cons").textContent=st.exclude.length||st.avoid.length?`Constraints: drop ${st.exclude.join(", ")||"-"}; skip areas ${st.avoid.join(", ")||"-"}`:"";
- const r=await checked("/api/rank",{method:"POST",headers:{"Content-Type":"application/json"},
-  body:JSON.stringify({city:$("#city").value,people,exclude:st.exclude,avoid_areas:st.avoid})});
- if(!r.headers.get("content-type")?.includes("text/event-stream"))throw new Error("Unexpected server response");
- const rd=r.body.getReader(),dec=new TextDecoder();let buf="";
- try{
-  for(;;){const {done,value}=await rd.read();if(done){buf+=dec.decode();if(buf.trim())handle(buf);break;}
-   buf+=dec.decode(value,{stream:true});let m;
-   while((m=/\r?\n\r?\n/.exec(buf))){handle(buf.slice(0,m.index));buf=buf.slice(m.index+m[0].length);}}
- }finally{await rd.cancel();rd.releaseLock();}
-}
-async function run(){
- if(busy)return;setBusy(true);
- try{await performRun();}catch(e){report(e);}finally{setBusy(false);}
-}
-async function refine(){
- if(busy)return;const t=$("#ref").value.trim();if(!t)return;setBusy(true);
- try{
-  const d=await (await checked("/api/refine",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({city:$("#city").value,text:t})})).json();
-  st.exclude=[...new Set([...st.exclude,...d.exclude])];st.avoid=[...new Set([...st.avoid,...d.avoid_areas])];
-  await performRun();$("#trace").insertAdjacentHTML("afterbegin",`<li><b>${esc(d.message)}</b></li>`);
- }catch(e){report(e);}finally{setBusy(false);}
-}
-function reset(){if(busy)return;st={exclude:[],avoid:[]};$("#ref").value="";run();}
-$("#city").addEventListener("change",()=>{st={exclude:[],avoid:[]};$("#cons").textContent="";$("#results").innerHTML="";$("#expl").textContent="";$("#trace").innerHTML="";if(map?.getSource("a"))map.getSource("a").setData({type:"FeatureCollection",features:[]});});
-setBusy(true);init().catch(report).finally(()=>setBusy(false));
-</script></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f6f5f2">
+  <meta name="description" content="Find your kind of neighborhood. Turn the music, films, and things you love into places you can explore together.">
+  <title>CultureFit — Find your kind of place</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="/styles.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#preferences">Skip to preferences</a>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="CultureFit home"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 21 8v8l-9 5-9-5V8Z"/><path d="m3 8 9 5 9-5M12 13v8"/></svg></span>CultureFit<span class="brand-dot">.</span></a>
+    <nav aria-label="Main navigation"><a class="nav-active" href="#preferences">Discover</a><a href="#results-section">Your matches</a><a href="#how-it-works">How it works</a></nav>
+    <span class="powered"><span class="status-dot"></span>Powered by Qloo</span>
+  </header>
+
+  <main class="page-shell">
+    <section class="intro" aria-labelledby="page-title">
+      <div><div class="eyebrow"><span class="little-star">✳</span> A LITTLE TASTE. A NEW PERSPECTIVE.</div><h1 id="page-title">Your tastes. <span>Your kind of place.</span></h1><p>Find a neighborhood that feels like you. Or the two of you.</p></div>
+      <div class="intro-note"><span class="overlap-orbit" aria-hidden="true"><i></i><i></i></span><span>Different tastes.<br><strong>Common ground.</strong></span></div>
+    </section>
+
+    <div class="workspace">
+      <aside class="sidebar">
+        <section class="panel preferences" id="preferences" aria-labelledby="preferences-title">
+          <div class="panel-heading"><span class="step-number">01</span><h2 id="preferences-title">Set your coordinates</h2><span class="small-arrow" aria-hidden="true">↗</span></div>
+          <div class="field"><label for="city">Where are we looking?</label><div class="select-wrap"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg><select id="city" aria-describedby="city-hint"></select></div><p class="field-hint" id="city-hint">Choose a city to explore.</p></div>
+          <div class="taste-profile you-profile"><div class="profile-heading"><span class="avatar avatar-you" aria-hidden="true">Y</span><div><label for="f1">Your corner of culture</label><span>What are you into?</span></div><span class="profile-label">YOU</span></div><textarea id="f1" rows="3" maxlength="720" aria-describedby="favorites-hint" placeholder="Radiohead, Blade Runner, specialty coffee…">Blade Runner, Radiohead, Studio Ghibli</textarea><div class="profile-bottom"><span>Music, movies, food & more</span><span class="taste-count" id="count1">3 / 6</span></div></div>
+          <div class="taste-profile partner-profile"><div class="profile-heading"><span class="avatar avatar-partner" aria-hidden="true">P</span><div><label for="f2">Bring another perspective</label><span>A partner, friend, or roommate</span></div><span class="profile-label">OPTIONAL</span></div><textarea id="f2" rows="3" maxlength="720" aria-describedby="favorites-hint" placeholder="Their favorites, separated by commas…">Metallica, Peaky Blinders, Guinness</textarea><div class="profile-bottom"><span>Find your common ground</span><span class="taste-count" id="count2">3 / 6</span></div></div>
+          <p class="field-hint favorites-hint" id="favorites-hint">Separate favorites with commas. Up to 6 per person.</p>
+          <button class="primary-button" id="search-button" type="button" onclick="run()"><span class="button-icon" aria-hidden="true">✳</span><span id="search-label">Find our neighborhood</span><span aria-hidden="true">↗</span></button>
+          <p class="search-note">A little of you. A little of them. A place that fits.</p>
+        </section>
+
+        <section class="panel refine-panel" aria-labelledby="refine-title"><div class="panel-heading"><span class="step-number">02</span><h2 id="refine-title">Make it more you</h2></div><p class="panel-copy">Something quieter? Fewer bars?<br>Tell us what matters.</p><label class="sr-only" for="ref">Refine your search</label><input id="ref" maxlength="300" placeholder="e.g. quiet streets, no clubs"><div class="refine-actions"><button class="secondary-button" type="button" onclick="refine()">Apply <span aria-hidden="true">↗</span></button><button class="text-button" type="button" onclick="reset()">Reset</button></div><p id="cons" class="constraint-list" aria-live="polite"></p></section>
+        <div class="sidebar-footnote"><span aria-hidden="true">↳</span><p>Good neighborhoods have character.<br>Let’s find yours.</p></div>
+      </aside>
+
+      <section class="explore-column" aria-label="Neighborhood exploration">
+        <section class="map-panel" aria-label="Neighborhood map"><div id="map" role="region" aria-label="Interactive map"></div><div class="map-title"><span class="map-live-dot"></span><span id="map-city">Zurich</span><span class="map-label-divider"></span><span id="map-caption">A new point of view</span></div><div class="map-bottom"><span class="map-caption"><span class="mini-location" aria-hidden="true">⌖</span> Taste meets geography</span><div class="map-legend"><span>Lower fit</span><i></i><span>Higher fit</span></div></div><div class="map-fallback" id="map-fallback" hidden><span aria-hidden="true">⌖</span><strong>Map unavailable</strong><p>You can still compare neighborhoods below.</p></div></section>
+
+        <div class="results-layout">
+          <section id="results-section" class="results-column" aria-labelledby="results-title"><div class="section-heading"><div class="heading-line"><span class="eyebrow">THE SHORTLIST</span><span class="result-count" id="result-count">Ready when you are</span></div><h2 id="results-title">Places with your kind of energy<span>.</span></h2></div><div class="empty-state" id="empty-state"><div class="empty-art" aria-hidden="true"><span class="empty-orbit"></span><svg viewBox="0 0 80 80"><path d="m40 10 25 14v28L40 67 15 52V24Z"/><path d="m15 24 25 15 25-15M40 39v28"/><circle cx="40" cy="25" r="5"/></svg><i>✳</i></div><h3>Your next chapter starts here.</h3><p>Add a few favorites, pick a city, and we’ll connect the dots between your taste and its neighborhoods.</p><span class="empty-kicker">YOUR TASTE → REAL PLACES</span></div><div id="results" aria-live="polite" aria-busy="false"></div><p class="score-note" id="score-note" hidden>Scores compare these neighborhoods with each other. They are not match percentages. Group fit follows the person with the lower score.</p></section>
+
+          <aside class="context-column"><section class="panel insight-panel" aria-labelledby="insight-title"><div class="insight-icon" aria-hidden="true">✳</div><div class="heading-line"><span class="eyebrow">THE REASON BEHIND IT</span><span class="source-label" id="explanation-source" hidden></span></div><h2 id="insight-title">More than a pin<br>on a map.</h2><p id="expl" class="explanation">The places we find tell a story. Your explanation will connect your tastes to the neighborhoods that bring them together.</p><div class="insight-foot"><span aria-hidden="true">↗</span> Rooted in real places</div></section>
+          <section class="panel journey-panel" id="how-it-works" aria-labelledby="journey-title"><div class="journey-heading"><h2 id="journey-title">Connecting the dots</h2><span class="journey-status" id="journey-status">Standby</span></div><p class="panel-copy">Find your interests. Explore nearby places. Compare the possibilities.</p><details id="trace-details"><summary><span class="status-dot"></span><span id="progress-label">Follow the search</span><span class="details-chevron" aria-hidden="true">⌄</span></summary><ol id="trace" aria-live="polite"></ol></details></section></aside>
+        </div>
+      </section>
+    </div>
+    <footer class="footer"><span>CultureFit<span class="brand-dot">.</span> <span class="footer-divider">/</span> A place for your people.</span><span id="coverage">Two cities. Endless possibilities.</span></footer>
+  </main>
+</body>
+</html>

@@ -9,12 +9,12 @@ Qloo находит связанные места; приложение расс
 Из папки `Qloo api`:
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-# Впишите QLOO_API_KEY в .env. Существующий настроенный .env не перезаписывайте.
-uvicorn culturefit.main:app --reload
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+[ -f .env ] || cp .env.example .env
+# Впишите QLOO_API_KEY в .env.
+python -m uvicorn culturefit.main:app --reload
 ```
 
 Открыть http://localhost:8000. Документация собственного API: http://localhost:8000/docs.
@@ -75,7 +75,7 @@ LOW_SPREAD=0.03 — условный порог для получаемого AP
 ## Проверки
 
 ```bash
-pip install -r requirements-dev.txt
+python -m pip install -r requirements-dev.txt
 python -m pytest tests -q
 python scripts/live_check.py
 PLAYWRIGHT_BROWSERS_PATH=/tmp/culturefit-browsers python -m playwright install chromium
@@ -99,7 +99,7 @@ culturefit/           # пакет приложения
   llm.py              # LLM, правила и объяснения
   scoring.py          # расчёт рейтинга
   districts.py        # центры районов
-  static/index.html   # интерфейс
+  static/             # интерфейс: index.html, styles.css, app.js
 tests/                # автоматические тесты
 scripts/              # проверки Qloo и браузера
 docs/                 # документация и отчёт
@@ -109,5 +109,26 @@ requirements-dev.txt  # инструменты тестирования
 pyproject.toml        # настройки pytest
 ```
 
-`.env`, `venv/`, кэши и `artifacts/` остаются локально и исключены из Git.
+`.env`, `.venv/`, `venv/`, кэши и `artifacts/` остаются локально и исключены из Git.
 Исходный личный конспект `only me.txt` находится вне репозитория.
+
+## Gemini
+
+Добавьте `GEMINI_API_KEY` в `.env` в корне проекта. Имя модели можно выбрать через
+`GEMINI_MODEL`. Ключ не нужно вставлять в `culturefit/llm.py`: сервер передаёт его
+Google через заголовок `x-goog-api-key`. После изменения `.env` перезапустите сервер.
+
+```bash
+python scripts/gemini_check.py
+# Проверить список моделей без генерации:
+python scripts/gemini_check.py --models
+```
+
+Проверка выполняет короткую генерацию, разбор пожелания и объяснение результата,
+проверяя, что источник именно Gemini. Ошибки Google 404, 429 и 503 отображаются
+отдельно: рабочий ключ сам по себе не гарантирует доступность конкретной модели.
+При недоступном LLM приложение продолжает работать через правила и шаблон.
+
+Если окружение переносилось вместе с папкой, его скрипты могут содержать старые
+абсолютные пути. Создайте новое `.venv` по инструкции выше. Виртуальные окружения
+нужно создавать на месте, а не переносить между каталогами.

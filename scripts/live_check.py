@@ -56,8 +56,9 @@ if __name__ == '__main__':
             report.append(row)
         refinement=c.post('/api/refine',json={'city':'Zurich','text':'quiet, no bars, avoid Altstadt'})
         assert refinement.status_code==200
-        assert 'bar' in refinement.json()['exclude']
+        from culturefit.scoring import is_venue
+        assert not is_venue({'name': 'Example', 'tags': [{'name': 'Bar'}]}, refinement.json()['exclude'])
         assert refinement.json()['avoid_areas']==['Altstadt']
-        print('Refine OK (rules, no LLM required)')
+        print('Refine OK (source: ' + refinement.json()['source'] + ')')
     (ROOT/'artifacts').mkdir(exist_ok=True)
     (ROOT/'artifacts/live-check.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
