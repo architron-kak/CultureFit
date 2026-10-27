@@ -6,7 +6,9 @@
 
 **License:** [MIT](../LICENSE)
 
-**Live demo:** Not deployed yet. Replace this line with the verified public HTTPS URL before submitting.
+**Live demo:** [culturefit-yafy.onrender.com](https://culturefit-yafy.onrender.com)
+
+**Public repository:** [architron-kak/CultureFit](https://github.com/architron-kak/CultureFit)
 
 ## Project description
 
@@ -70,11 +72,14 @@ safety, or commuting. API availability and coverage affect the results.
 
 | Required item | Current status |
 | --- | --- |
-| Functional end-to-end demo URL | Pending external deployment and public-URL checks |
-| Public source repository | Public access must be confirmed; unauthenticated GitHub API returned 404 |
+| Functional end-to-end demo URL | Published and tested anonymously at the live demo link above |
+| Public source repository | Public; unauthenticated GitHub API confirms `private: false` |
 | Text description | Provided above |
-| Fully published external hosting | Render configuration prepared; deployment not yet performed |
-| Open-source license visible in repository | MIT LICENSE published in main; verify its display in GitHub About |
+| Fully published external hosting | Render Python Web Service, free plan, Frankfurt; deployment is Live |
+| Open-source license visible in repository | Root LICENSE in main and the submission branch; GitHub detects MIT |
 
-A demo video is not required by the supplied rules. The missing public demo URL
-and repository visibility still need to be resolved before the submission is eligible.
+A demo video is not required by the supplied rules. The published service uses
+the `design/night-taste-map` branch linked above. The repository's default `main`
+branch retains an earlier UI and links to the current submission branch.
+See [public demo validation](PUBLIC_DEMO_VALIDATION.md) for the actual checks.
+The free hosting service can take about a minute to resume after an idle period.

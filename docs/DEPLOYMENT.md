@@ -4,9 +4,20 @@ Author: [architron-kak](https://github.com/architron-kak).
 
 A public demo must run the FastAPI server as well as the frontend. GitHub Pages
 alone cannot run this Python backend. The repository includes a Render Blueprint
-in `render.yaml`; it has not yet been deployed.
+in `render.yaml`. The application was published on 27 October 2026:
 
-## Render
+- Public demo: https://culturefit-yafy.onrender.com
+- Render dashboard: https://dashboard.render.com/web/srv-dbgd76m1egvs738cjs50
+- Runtime: Python Web Service, free plan, Frankfurt, one instance and one worker.
+- Source branch: `design/night-taste-map`.
+
+Deployment was created using Render's API with the same settings as the
+Blueprint. Project keys are environment secrets on Render. The Render account
+API key remains local and is not part of the deployed application's environment.
+The service reached **Live** and passed the checks in
+[PUBLIC_DEMO_VALIDATION.md](PUBLIC_DEMO_VALIDATION.md).
+
+## Reproduce on Render
 
 1. Sign in to https://dashboard.render.com and connect your GitHub account.
 2. Choose **New → Blueprint** and select `architron-kak/CultureFit`.
@@ -18,7 +29,7 @@ in `render.yaml`; it has not yet been deployed.
    `sync: false`. Copy them from your local configuration into Render's secret
    settings. Do not put their values in Git, `render.yaml`, or the submission text.
 6. Deploy and wait for the service to become **Live**. Use the actual public HTTPS
-   URL shown by Render; no demo URL has been assigned to this project yet.
+   URL shown by Render; a separate service will receive its own URL.
 7. Verify that the URL works in a private/incognito browser window without login.
 8. Complete the end-to-end checks below. A successful health check alone does not
    prove that upstream API credentials and quotas work.
@@ -70,15 +81,15 @@ is not a published functional demo.
 
 ## Repository and license
 
-The hackathon requires a public repository. Open
+The repository is public and GitHub detects the MIT license as of 27 October 2026.
+The hackathon requires it to remain public. If restoring a private copy, open
 https://github.com/architron-kak/CultureFit/settings and use **Danger Zone → Change
 repository visibility → Public** if the repository is still private. Then open
 its URL while signed out to confirm that the source is visible.
 
 The MIT `LICENSE` file is placed in the repository root, including the `main`
-branch, so GitHub can detect it for the repository's license information. Verify
-that **MIT license** appears on the repository page after pushing. Keep the
-current submission branch link explicit if `main` still contains an older UI.
+branch. Keep the current submission branch link explicit: `main` retains the
+earlier UI, while the published service runs `design/night-taste-map`.
 
 ## Official references
 
