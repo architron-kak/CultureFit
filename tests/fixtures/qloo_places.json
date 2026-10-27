@@ -1,0 +1,86 @@
+{
+  "favorite": {
+    "name": "Radiohead",
+    "entity_id": "00000000-0000-4000-8000-000000000001"
+  },
+  "venues": [
+    {
+      "name": "Test cafe",
+      "tags": [
+        {
+          "name": "Art"
+        },
+        {
+          "name": "Coffee"
+        },
+        {
+          "name": "Mastercard"
+        },
+        {
+          "name": "Visa"
+        },
+        {
+          "name": "Wheelchair accessible parking lot"
+        }
+      ],
+      "affinity": 0.82,
+      "why": {
+        "signal.interests.entities": [
+          {
+            "entity_id": "00000000-0000-4000-8000-000000000001",
+            "score": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "Test art space",
+      "tags": [
+        {
+          "name": "Historic"
+        },
+        {
+          "name": "Live music"
+        },
+        {
+          "name": "Bohemian"
+        },
+        {
+          "name": "Nfc mobile payments"
+        }
+      ],
+      "affinity": 0.8,
+      "why": {
+        "signal.interests.entities": [
+          {
+            "entity_id": "00000000-0000-4000-8000-000000000001",
+            "score": 1
+          }
+        ]
+      }
+    },
+    {
+      "name": "Test bookshop",
+      "tags": [
+        {
+          "name": "Books"
+        },
+        {
+          "name": "Quiet"
+        },
+        {
+          "name": "Coffee"
+        }
+      ],
+      "affinity": 0.78,
+      "why": {
+        "signal.interests.entities": [
+          {
+            "entity_id": "00000000-0000-4000-8000-000000000001",
+            "score": 1
+          }
+        ]
+      }
+    }
+  ]
+}

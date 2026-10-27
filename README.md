@@ -2,13 +2,24 @@
 
 **Автор:** [architron-kak](https://github.com/architron-kak).
 
+**Демоверсия:** публичный URL пока не опубликован.
+**Версия для хакатона:** [design/night-taste-map](https://github.com/architron-kak/CultureFit/tree/design/night-taste-map).
+**Лицензия:** [MIT](LICENSE).
+
 Подбирает районы Цюриха и Алматы по культурным вкусам одного или двух людей.
 Qloo находит связанные места; приложение рассчитывает собственный рейтинг и показывает
 конкретные заведения. Gemini/OpenRouter необязательны: без ключей работают правила и шаблоны.
 
 ## Запуск (Python 3.10+)
 
-Из папки `Qloo api`:
+Для актуальной версии хакатона:
+
+```bash
+git clone --branch design/night-taste-map https://github.com/architron-kak/CultureFit.git
+cd CultureFit
+```
+
+Далее из корня репозитория (папки с `requirements.txt`):
 
 ```bash
 python3 -m venv .venv
@@ -111,7 +122,7 @@ culturefit/           # пакет приложения
   llm.py              # LLM, правила и объяснения
   scoring.py          # расчёт рейтинга
   districts.py        # центры районов
-  static/             # интерфейс: index.html, styles.css, app.js
+  static/index.html   # ночной интерфейс: HTML, CSS и vanilla JS в одном файле
 tests/                # автоматические тесты
 scripts/              # проверки Qloo и браузера
 docs/                 # документация и отчёт
@@ -149,3 +160,15 @@ python scripts/gemini_check.py --models
 
 Исходный код проекта распространяется под [MIT License](LICENSE).
 Copyright © 2026 architron-kak.
+
+## Подача на хакатон
+
+Готовое описание на английском и актуальный список требований:
+[docs/SUBMISSION.md](docs/SUBMISSION.md).
+
+Для публикации подготовлен [render.yaml](render.yaml). Инструкция и проверка
+публичной демоверсии: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). Сам файл
+конфигурации не означает, что приложение уже опубликовано.
+
+На 27 октября 2026 года публичный доступ к GitHub-репозиторию не подтверждён,
+а URL внешней демоверсии ещё нет. Оба пункта обязательны по присланным правилам.

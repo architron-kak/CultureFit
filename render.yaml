@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: culturefit
+    runtime: python
+    plan: free
+    region: frankfurt
+    branch: design/night-taste-map
+    buildCommand: python -m pip install -r requirements.txt
+    startCommand: python -m uvicorn culturefit.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /api/cities
+    autoDeployTrigger: commit
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.14.8
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: QLOO_API_URL
+        value: https://hackathon.api.qloo.com
+      - key: QLOO_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash
+      - key: GEMINI_API_KEY
+        sync: false

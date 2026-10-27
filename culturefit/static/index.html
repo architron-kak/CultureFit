@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b0f10">
+  <meta name="author" content="architron-kak">
   <meta name="description" content="A night map of your cultural taste. Find common ground in the neighborhoods and places around you.">
   <title>CultureFit — Night taste map</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -106,6 +107,8 @@
     .reset-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
     .reset-row span { color: var(--muted); font-size: 9px; }
     .text-button { border: 0; background: none; color: #c6d5d6; text-decoration: underline; text-underline-offset: 4px; font-size: 10px; padding: 7px 0; }
+    .author-credit { margin-top: 18px; color: var(--muted); font-size: 10px; text-align: center; }
+    .author-credit a { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
     .field-message { font-size: 10px; margin-top: 12px; color: var(--amber); line-height: 1.7; }
     .center-story { position: fixed; left: 365px; right: 385px; top: 38%; text-align: center; z-index: 2; pointer-events: none; }
     .center-story .eyebrow { font-size: 9px; color: #b3c7c8; }
@@ -344,6 +347,7 @@
         </form>
         <section class="refine-section" aria-labelledby="refine-title"><h2 id="refine-title">Fine-tune the night.</h2><p>More calm. Fewer clubs. Tell us what matters.</p><form class="refine-row" id="refine-form"><label class="sr-only" for="ref">Refine your search</label><input id="ref" maxlength="300" placeholder="e.g. no bars, avoid Altstadt"><button class="secondary" type="submit">Apply</button></form><div id="cons" class="constraint-chips" aria-label="Active constraints"></div><div class="reset-row"><span>Constraints apply to venue evidence.</span><button class="text-button" id="reset-button" type="button">Reset</button></div></section>
         <p id="field-message" class="field-message" role="status" hidden></p>
+        <p class="author-credit">Created by <a href="https://github.com/architron-kak" target="_blank" rel="noopener noreferrer">architron-kak</a></p>
       </div>
     </section>
 
