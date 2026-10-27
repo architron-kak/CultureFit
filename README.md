@@ -1,178 +1,221 @@
 # CultureFit
 
-**Автор:** [architron-kak](https://github.com/architron-kak).
+Find common ground through culture. CultureFit helps one person or two people
+discover neighborhoods in Zurich and Almaty based on their favorite films,
+artists, brands, food, and games. Qloo finds related places; CultureFit compares
+neighborhoods and shows the venues behind each result.
 
-**Демоверсия:** [culturefit-yafy.onrender.com](https://culturefit-yafy.onrender.com).
-**Исходный код:** [main](https://github.com/architron-kak/CultureFit/tree/main).
-**Лицензия:** [MIT](LICENSE).
+**Author:** [architron-kak](https://github.com/architron-kak)
 
-Актуальный код, ночной интерфейс и опубликованное приложение используют единую ветку `main`.
+**Live demo:** [culturefit-yafy.onrender.com](https://culturefit-yafy.onrender.com)
 
-Подбирает районы Цюриха и Алматы по культурным вкусам одного или двух людей.
-Qloo находит связанные места; приложение рассчитывает собственный рейтинг и показывает
-конкретные заведения. Gemini/OpenRouter необязательны: без ключей работают правила и шаблоны.
+**Source:** [main](https://github.com/architron-kak/CultureFit/tree/main)
 
-## Запуск (Python 3.10+)
+**License:** [MIT](LICENSE)
 
-Для актуальной версии хакатона:
+The current source, night map interface, and published application all use `main`.
+Gemini and OpenRouter are optional: rules and template explanations keep the app
+usable without an LLM key.
+
+## Quick start (Python 3.10+)
+
+Clone the repository:
 
 ```bash
 git clone https://github.com/architron-kak/CultureFit.git
 cd CultureFit
 ```
 
-Далее из корня репозитория (папки с `requirements.txt`):
+From the repository root, where `requirements.txt` is located:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 [ -f .env ] || cp .env.example .env
-# Впишите QLOO_API_KEY в .env.
+# Set QLOO_API_KEY in .env before starting the server.
 python -m uvicorn culturefit.main:app --reload
 ```
 
-Открыть http://localhost:8000. Документация собственного API: http://localhost:8000/docs.
-Ключи читаются только сервером;
-`.env` исключён из Git. Для обычного Qloo-аккаунта задайте соответствующий QLOO_API_URL;
-хакатонный ключ проверен с https://hackathon.api.qloo.com.
+Open http://localhost:8000. The application's API documentation is available at
+http://localhost:8000/docs.
 
-## Использование
+Only the server reads API keys. `.env` is excluded from Git. For a standard Qloo
+account, set the appropriate `QLOO_API_URL`; the hackathon key was tested with
+https://hackathon.api.qloo.com.
 
-1. Выберите город и укажите от 1 до 6 любимых объектов через запятую.
-2. Второй участник необязателен: очистите его поле для индивидуального режима.
-3. Нажмите Find our neighborhood. Шаги поиска появляются по мере выполнения.
-4. Уточните запрос: `quiet`, `no bars`, `no clubs`, `avoid Altstadt`, `без баров`.
-   Без LLM поддерживается ограниченный набор явных формулировок; произвольный текст
-   может не распознаться. Уточнения накапливаются до Reset или смены города.
-5. При ошибке сети её текст появится в Agent steps, после чего можно повторить запрос.
+## Using the app
 
-Отсутствие карты/CDN не мешает текстовому рейтингу. Карта использует MapLibre и OpenStreetMap.
+1. Select a city and enter one to six favorites per person, separated by commas.
+2. The second person is optional. Clear that field to explore on your own.
+3. Click **Find our neighborhood**. Search steps appear as the workflow runs.
+4. Refine the results with requests such as `quiet`, `no bars`, `no clubs`, or
+   `avoid Altstadt`. Without an LLM, only a limited set of explicit phrases is
+   supported. Constraints accumulate until you click **Reset** or change cities.
+5. If a network request fails, the agent log displays the error. You can retry
+   the search.
 
-## Как устроен расчёт
+The text results remain usable if the map or its CDN is unavailable. The map
+uses MapLibre and OpenStreetMap.
 
-- `/search?query=...` сопоставляет каждый интерес с Qloo ID. Предпочтение отдаётся
-  точному имени среди первых пяти результатов; при его отсутствии берётся первый результат.
-  Это автоматическое сопоставление, его следует проверять по Agent steps.
-- `/v2/insights` получает 20 мест вокруг каждой заданной точки района отдельно для каждого
-  участника. Используются `filter.type=urn:entity:place`, WKT `POINT(lon lat)`, радиус
-  в метрах, `signal.interests.entities` и `feature.explainability=true`.
-- После удаления отелей, части сетевых заведений и пользовательских исключений считается
-  среднее affinity пяти лучших мест. Отсутствующий/нечисловой affinity не считается нулём.
-- Средние значения для участника приводятся к 0–100 относительно его лучшего района:
-  `100 * (1 - (best - raw) / max(spread, 0.08))`. Малый разброс не растягивается
-  на всю шкалу: при affinity 0.83 и 0.79 оценки равны 100 и 50.
-  При равенстве доступных значений все районы получают 100 и предупреждение о малых различиях.
-- Group fit — минимум оценок участников; gives up — 100 минус личная относительная оценка.
-- Нет данных хотя бы для одного участника в районе → `null` и «insufficient data»;
-  такие районы идут последними. Это не оценка 0 или 50.
+## How ranking works
 
-Это эвристика, не вероятность совпадения и не официальная оценка района от Qloo.
-Affinity зависит от контекста запроса; сравнение средних из разных географических запросов
-не является калиброванной статистической моделью. Малые различия не стоит переоценивать.
-MIN_SPREAD=LOW_SPREAD=0.08 — условный порог для получаемого API affinity 0–1,
-а не доверительный интервал. Если разброс достигает 0.08, худший район всё ещё
-может получить 0: это нижняя относительная оценка, а не отсутствие подходящих мест.
-Радиус Цюриха — 700 м, Алматы — 1500 м. Круги всё ещё могут пересекаться,
-центры приблизительные: официальные границы районов не используются.
-Из тегов для карточек, why-схемы и Gemini удаляются платёжные способы, парковка,
-доступность, цены, доставка, Wi-Fi и другие служебные признаки. Исходный `why`
-при этом сохраняется: подтверждённые Qloo связи не заменяются догадками.
-Фильтр «quiet» убирает категории ночных заведений, но не измеряет реальный шум улиц.
-Цены жилья, безопасность, транспорт и наличие квартир не анализируются.
+- `/search?query=...` resolves each favorite to a Qloo entity ID. An exact name
+  match among the first five results is preferred; otherwise, the first result
+  is used. This is automatic matching, so review the resolved names in the log.
+- `/v2/insights` requests 20 places around each neighborhood center separately
+  for each person. Requests use `filter.type=urn:entity:place`, a WKT
+  `POINT(lon lat)`, a radius in meters, `signal.interests.entities`, and
+  `feature.explainability=true`.
+- After filtering hotels, selected chain venues, and user exclusions, the app
+  averages the affinity of the five strongest qualifying places. Missing or
+  nonnumeric affinity values are not treated as zero.
+- Each person's averages are converted to a 0–100 score relative to their best
+  neighborhood: `100 * (1 - (best - raw) / max(spread, 0.08))`. Small differences
+  are not stretched across the entire scale: affinities of 0.83 and 0.79 produce
+  scores of 100 and 50. When all available averages are equal, every area scores
+  100 and a small-differences notice appears.
+- **Group fit** is the lowest personal score. **Gives up** is 100 minus a person's
+  relative score.
+- If an area lacks data for either person, its group score is `null` and the UI
+  shows **insufficient data**. These areas appear last; they are not assigned
+  an artificial score of 0 or 50.
 
-## API и устойчивость
+Scores are relative to the compared neighborhoods, **not match percentages** or
+official Qloo neighborhood ratings. This is a heuristic. Affinity depends on the
+query context; comparing averages from separate geographic queries is not a
+calibrated statistical model. Small differences should not be overinterpreted.
 
-`POST /api/rank`: 1–2 участника с уникальными именами, 1–6 интересов каждому.
-Ошибки входных данных возвращают HTTP 422 до начала потока. Затем идут SSE-события
-`step`, `result`, `explanation` либо `error`. Уже начатый SSE-поток имеет HTTP 200:
-ошибку сервиса нужно читать из события `error`.
-`POST /api/refine`: город и текст до 300 символов.
-`GET /api/cities`: доступные города и районы.
+`MIN_SPREAD = LOW_SPREAD = 0.08` is a heuristic threshold for the API's 0–1
+affinity scale, not a confidence interval. Once the spread reaches 0.08, the
+lowest area can still score 0. That means the lowest relative score, not that
+the area has no suitable places.
 
-Один процесс ограничивает Qloo до 4 запросов/с, повторяет 429 один раз,
-использует Retry-After в секундах (не более 30 с) и кэш до 512 ответов на 6 часов.
-Кэш LLM ограничен 256 ответами на 1 час. При нескольких серверных процессах
-лимит суммируется; для такого запуска нужен общий rate limiter.
+Zurich uses a 700 m radius; Almaty uses 1500 m. Search circles can still overlap,
+and their centers are approximate. Official neighborhood boundaries are not used.
 
-## Проверки
+Payment methods, parking, accessibility, prices, delivery, Wi-Fi, and other
+utility tags are removed from cards, evidence diagrams, and Gemini inputs.
+The original `why` data is preserved: confirmed Qloo links are not replaced by
+guessed connections.
+
+The `quiet` constraint filters nightlife venue categories; it does not measure
+actual street noise. Housing prices, safety, transportation, and apartment
+availability are outside the app's scope.
+
+## API and resilience
+
+- `POST /api/rank`: one or two people with unique names and one to six favorites
+  each. Invalid input returns HTTP 422 before streaming starts. The response
+  streams SSE events: `step`, `result`, `explanation`, or `error`. Once the stream
+  begins, the HTTP status is 200; upstream failures must be read from the
+  `error` event.
+- `POST /api/refine`: a city and a request of up to 300 characters.
+- `GET /api/cities`: available cities and neighborhoods.
+
+Each server process limits Qloo traffic to four requests per second, retries a
+429 response once, and respects `Retry-After` in seconds up to a 30-second cap.
+The Qloo cache holds up to 512 responses for six hours. The LLM cache holds up to
+256 responses for one hour. With multiple processes, the request limits add up;
+that setup needs a shared rate limiter.
+
+## Checks
+
+Install the development dependencies and run the offline tests:
 
 ```bash
 python -m pip install -r requirements-dev.txt
 python -m pytest tests -q
+```
+
+The unit tests use a fake Qloo client and do not consume API requests. To test
+against real Qloo using your `.env` key, run the live check (about 37 requests):
+
+```bash
 python scripts/live_check.py
+```
+
+Run the browser checks:
+
+```bash
 PLAYWRIGHT_BROWSERS_PATH=/tmp/culturefit-browsers python -m playwright install chromium
 PLAYWRIGHT_BROWSERS_PATH=/tmp/culturefit-browsers python scripts/browser_check.py
 ```
 
-Обычные тесты используют подставной Qloo и не расходуют API-запросы.
-`live_check.py` явно обращается к Qloo с ключом из `.env` (примерно 37 запросов).
-Браузерная проверка использует подставные ответы Qloo, проверяет интерфейс и настоящую
-MapLibre при доступном CDN. Артефакты сохраняются в `artifacts/` и исключены из Git.
+The browser check uses synthetic Qloo responses to test the interface and real
+MapLibre rendering when the CDN is available. Artifacts are saved in `artifacts/`,
+which is excluded from Git.
 
-Подробности, исправления исходного конспекта и идеи развития: `docs/QLOO_NOTES.md`.
-Результаты проведённых проверок: `docs/VALIDATION.md`.
-Проверка новой шкалы, радиуса и служебных тегов на живом Qloo:
-`docs/SCORING_VALIDATION.md`.
+Further documentation:
 
-## Структура проекта
+- [Qloo notes and development ideas](docs/QLOO_NOTES.md)
+- [Validation history](docs/VALIDATION.md)
+- [Live Qloo validation of scores, radii, and tag filtering](docs/SCORING_VALIDATION.md)
+- [Published demo validation](docs/PUBLIC_DEMO_VALIDATION.md)
+
+## Project structure
 
 ```text
-culturefit/           # пакет приложения
-  main.py             # FastAPI и SSE
-  qloo.py             # клиент Qloo
-  llm.py              # LLM, правила и объяснения
-  scoring.py          # расчёт рейтинга
-  districts.py        # центры районов
-  static/index.html   # ночной интерфейс: HTML, CSS и vanilla JS в одном файле
-tests/                # автоматические тесты
-scripts/              # проверки Qloo и браузера
-docs/                 # документация и отчёт
-.env.example          # шаблон конфигурации
-requirements.txt      # зависимости приложения
-requirements-dev.txt  # инструменты тестирования
-pyproject.toml        # настройки pytest
+culturefit/           # application package
+  main.py             # FastAPI and SSE
+  qloo.py             # Qloo client
+  llm.py              # LLM integration, rules, and explanations
+  scoring.py          # neighborhood ranking
+  districts.py        # neighborhood centers
+  static/index.html   # night UI: HTML, CSS, and vanilla JS in one file
+tests/                # automated tests
+scripts/              # Qloo and browser checks
+docs/                 # documentation and validation reports
+.env.example          # configuration template
+requirements.txt      # application dependencies
+requirements-dev.txt  # testing tools
+pyproject.toml        # pytest configuration
+render.yaml           # Render deployment configuration
 ```
 
-`.env`, `.venv/`, `venv/`, кэши и `artifacts/` остаются локально и исключены из Git.
-Исходный личный конспект `only me.txt` находится вне репозитория.
+`.env`, `.venv/`, `venv/`, caches, and `artifacts/` remain local and are excluded
+from Git. The original personal notes file, `only me.txt`, is outside the repository.
 
 ## Gemini
 
-Добавьте `GEMINI_API_KEY` в `.env` в корне проекта. Имя модели можно выбрать через
-`GEMINI_MODEL`. Ключ не нужно вставлять в `culturefit/llm.py`: сервер передаёт его
-Google через заголовок `x-goog-api-key`. После изменения `.env` перезапустите сервер.
+Add `GEMINI_API_KEY` to `.env` in the project root. Select the model with
+`GEMINI_MODEL`. Do not insert the key into `culturefit/llm.py`: the server sends
+it to Google through the `x-goog-api-key` header. Restart the server after
+changing `.env`.
 
 ```bash
 python scripts/gemini_check.py
-# Проверить список моделей без генерации:
+# List available models without generating content:
 python scripts/gemini_check.py --models
 ```
 
-Проверка выполняет короткую генерацию, разбор пожелания и объяснение результата,
-проверяя, что источник именно Gemini. Ошибки Google 404, 429 и 503 отображаются
-отдельно: рабочий ключ сам по себе не гарантирует доступность конкретной модели.
-При недоступном LLM приложение продолжает работать через правила и шаблон.
+The check runs a short generation, parses a refinement, and generates an
+explanation, verifying that the source is Gemini. Google errors 404, 429, and
+503 are reported separately. A valid key alone does not guarantee that a
+particular model is available. If the LLM is unavailable, the app continues
+with rules and template explanations.
 
-Если окружение переносилось вместе с папкой, его скрипты могут содержать старые
-абсолютные пути. Создайте новое `.venv` по инструкции выше. Виртуальные окружения
-нужно создавать на месте, а не переносить между каталогами.
+If you moved an existing virtual environment with the project folder, its
+scripts may still contain old absolute paths. Create a new `.venv` using the
+instructions above. Virtual environments should be created in place rather
+than moved between directories.
 
-## Лицензия
+## License
 
-Исходный код проекта распространяется под [MIT License](LICENSE).
+The source code is released under the [MIT License](LICENSE).
 Copyright © 2026 architron-kak.
 
-## Подача на хакатон
+## Hackathon submission and hosting
 
-Готовое описание на английском и актуальный список требований:
+The English project description and submission checklist are available in
 [docs/SUBMISSION.md](docs/SUBMISSION.md).
 
-Демоверсия [culturefit-yafy.onrender.com](https://culturefit-yafy.onrender.com)
-опубликована на бесплатном Render из ветки `main`.
-27 октября 2026 года проверены публичный доступ без входа, реальные поиски
-в обоих городах и уточнение с повторным расчётом. GitHub-репозиторий публичный;
-GitHub определяет лицензию MIT. Результаты: [проверка демоверсии](docs/PUBLIC_DEMO_VALIDATION.md).
+The [live demo](https://culturefit-yafy.onrender.com) is published on Render's
+free plan from `main`. On 27 October 2026, checks confirmed anonymous public
+access, real searches in both cities, and refinement followed by reranking.
+The GitHub repository is public and GitHub detects its MIT license. See the
+[published demo validation report](docs/PUBLIC_DEMO_VALIDATION.md).
 
-После простоя бесплатный сервис может запускаться около минуты.
-Повторное развёртывание: [render.yaml](render.yaml) и [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+After an idle period, the free service may take about a minute to resume.
+To reproduce the deployment, use [render.yaml](render.yaml) and the
+[deployment instructions](docs/DEPLOYMENT.md).
