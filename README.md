@@ -3,11 +3,10 @@
 **Автор:** [architron-kak](https://github.com/architron-kak).
 
 **Демоверсия:** [culturefit-yafy.onrender.com](https://culturefit-yafy.onrender.com).
-**Версия для хакатона:** [design/night-taste-map](https://github.com/architron-kak/CultureFit/tree/design/night-taste-map).
+**Исходный код:** [main](https://github.com/architron-kak/CultureFit/tree/main).
 **Лицензия:** [MIT](LICENSE).
 
-Опубликованное приложение использует ветку `design/night-taste-map`.
-Актуальные инструкции запуска и описание для хакатона находятся в этой ветке.
+Актуальный код, ночной интерфейс и опубликованное приложение используют единую ветку `main`.
 
 Подбирает районы Цюриха и Алматы по культурным вкусам одного или двух людей.
 Qloo находит связанные места; приложение рассчитывает собственный рейтинг и показывает
@@ -18,7 +17,7 @@ Qloo находит связанные места; приложение расс
 Для актуальной версии хакатона:
 
 ```bash
-git clone --branch design/night-taste-map https://github.com/architron-kak/CultureFit.git
+git clone https://github.com/architron-kak/CultureFit.git
 cd CultureFit
 ```
 
@@ -170,7 +169,7 @@ Copyright © 2026 architron-kak.
 [docs/SUBMISSION.md](docs/SUBMISSION.md).
 
 Демоверсия [culturefit-yafy.onrender.com](https://culturefit-yafy.onrender.com)
-опубликована на бесплатном Render из ветки `design/night-taste-map`.
+опубликована на бесплатном Render из ветки `main`.
 27 октября 2026 года проверены публичный доступ без входа, реальные поиски
 в обоих городах и уточнение с повторным расчётом. GitHub-репозиторий публичный;
 GitHub определяет лицензию MIT. Результаты: [проверка демоверсии](docs/PUBLIC_DEMO_VALIDATION.md).

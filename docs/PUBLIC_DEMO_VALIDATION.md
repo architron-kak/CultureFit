@@ -2,7 +2,7 @@
 
 - Public application: https://culturefit-yafy.onrender.com
 - Public repository: https://github.com/architron-kak/CultureFit
-- Deployed source: `design/night-taste-map`.
+- Current deployed source: `main` (the initial design branch was merged into it).
 - Initial application commit: `bffdf228450d2f5b97ed85cba35076aa99412baf`.
 - Host: Render Python Web Service, **free** plan, Frankfurt, one instance.
 - Startup: Uvicorn with one worker; health check `/api/cities`.
@@ -57,9 +57,10 @@ recorded. Screenshots and machine-readable reports remain in ignored `artifacts/
 ## Repository, configuration, and local checks
 
 The unauthenticated GitHub API returned HTTP 200, `private: false`, and license
-SPDX `MIT`. Author credit and the root MIT license are present on `main` and the
-submission branch. The repository homepage README links to the demo and the
-current source branch; its earlier UI is retained on `main`.
+SPDX `MIT`. Author credit and the root MIT license are present on `main`.
+The repository homepage README links to the demo and the current source branch.
+The previously separate design branch was merged into `main`, preserving its
+history. Render and the Blueprint now use `main` as the single current branch.
 
 The page source did not contain configured keys. Local `.env` and `.env.deploy`
 remain ignored by Git. Only application configuration and the Qloo/Gemini keys

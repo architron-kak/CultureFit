@@ -2,7 +2,7 @@
 
 **Author:** [architron-kak](https://github.com/architron-kak)
 
-**Source:** https://github.com/architron-kak/CultureFit/tree/design/night-taste-map
+**Source:** https://github.com/architron-kak/CultureFit/tree/main
 
 **License:** [MIT](../LICENSE)
 
@@ -76,10 +76,9 @@ safety, or commuting. API availability and coverage affect the results.
 | Public source repository | Public; unauthenticated GitHub API confirms `private: false` |
 | Text description | Provided above |
 | Fully published external hosting | Render Python Web Service, free plan, Frankfurt; deployment is Live |
-| Open-source license visible in repository | Root LICENSE in main and the submission branch; GitHub detects MIT |
+| Open-source license visible in repository | Root LICENSE in main; GitHub detects MIT |
 
-A demo video is not required by the supplied rules. The published service uses
-the `design/night-taste-map` branch linked above. The repository's default `main`
-branch retains an earlier UI and links to the current submission branch.
+A demo video is not required by the supplied rules. The published service and
+the public repository use the same current `main` branch linked above.
 See [public demo validation](PUBLIC_DEMO_VALIDATION.md) for the actual checks.
 The free hosting service can take about a minute to resume after an idle period.

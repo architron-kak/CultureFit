@@ -9,7 +9,7 @@ in `render.yaml`. The application was published on 27 October 2026:
 - Public demo: https://culturefit-yafy.onrender.com
 - Render dashboard: https://dashboard.render.com/web/srv-dbgd76m1egvs738cjs50
 - Runtime: Python Web Service, free plan, Frankfurt, one instance and one worker.
-- Source branch: `design/night-taste-map`.
+- Source branch: `main`.
 
 Deployment was created using Render's API with the same settings as the
 Blueprint. Project keys are environment secrets on Render. The Render account
@@ -21,7 +21,7 @@ The service reached **Live** and passed the checks in
 
 1. Sign in to https://dashboard.render.com and connect your GitHub account.
 2. Choose **New → Blueprint** and select `architron-kak/CultureFit`.
-3. Select the **design/night-taste-map** branch, which contains the night UI,
+3. Select the **main** branch, which contains the night UI,
    current scoring fixes, and the deployment configuration.
 4. Review the `culturefit` web service. The configuration explicitly selects the
    `free` plan. Review the provider's current account/plan conditions before creating it.
@@ -47,7 +47,7 @@ Blueprint assumes that both existing project keys will be configured.
 | Type | Public Web Service, not Static Site |
 | Runtime | Python 3 |
 | Python | 3.14.8 |
-| Branch | design/night-taste-map |
+| Branch | main |
 | Root directory | Repository root; leave empty |
 | Build | `python -m pip install -r requirements.txt` |
 | Start | `python -m uvicorn culturefit.main:app --host 0.0.0.0 --port $PORT --workers 1` |
@@ -88,8 +88,8 @@ repository visibility → Public** if the repository is still private. Then open
 its URL while signed out to confirm that the source is visible.
 
 The MIT `LICENSE` file is placed in the repository root, including the `main`
-branch. Keep the current submission branch link explicit: `main` retains the
-earlier UI, while the published service runs `design/night-taste-map`.
+branch. The current application, night UI, and Render configuration all use
+`main`; a separate design branch is no longer required.
 
 ## Official references
 
