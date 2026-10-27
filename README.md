@@ -113,6 +113,25 @@ availability are outside the app's scope.
 - `POST /api/refine`: a city and a request of up to 300 characters.
 - `GET /api/cities`: available cities and neighborhoods.
 
+POST requests are limited per IP to **6 searches** (`/api/rank`) and
+**20 refinements** (`/api/refine`) in a rolling hour. The first value of
+`X-Forwarded-For` identifies the client behind Render's proxy; without it, the
+socket address is used. An exhausted quota returns HTTP 429 with a short JSON
+`message` and `Retry-After` header before any SSE stream or provider work starts.
+The interface displays that message. Refining results also starts a search,
+which counts toward the separate search quota.
+
+All Gemini and OpenRouter generation attempts share a **150-call budget per
+UTC day**, resetting at midnight UTC. Failed attempts and each fallback model
+count; cached answers and missing credentials do not. When a new generation
+is blocked, explanations use the existing template and refinements use rules.
+SSE events and payloads remain the same.
+
+These limits are in memory in a single process: restarting the server resets
+them, and multiple workers or instances do not share them. The Render setup
+uses one worker and one instance. Run the app behind the trusted proxy that
+sets `X-Forwarded-For`.
+
 Each server process limits Qloo traffic to four requests per second, retries a
 429 response once, and respects `Retry-After` in seconds up to a 30-second cap.
 The Qloo cache holds up to 512 responses for six hours. The LLM cache holds up to

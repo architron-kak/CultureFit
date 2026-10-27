@@ -4,8 +4,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, StringConstraints, model_validator
 from typing import Annotated
@@ -15,10 +15,13 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 from .districts import CITIES  # noqa: E402
 from .llm import explain, parse_constraint  # noqa: E402
+from .limits import RequestLimiter  # noqa: E402
 from .qloo import Qloo  # noqa: E402
 from .scoring import rank_areas  # noqa: E402
 
 qloo: Qloo | None = None
+request_limiter = RequestLimiter()
+REQUEST_LIMITS = {"/api/rank": 6, "/api/refine": 20}
 
 
 @asynccontextmanager
@@ -34,6 +37,23 @@ async def lifespan(app):
 
 app = FastAPI(lifespan=lifespan)
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+
+
+@app.middleware("http")
+async def limit_requests(request: Request, call_next):
+    limit = REQUEST_LIMITS.get(request.url.path)
+    if request.method == "POST" and limit is not None:
+        forwarded = request.headers.get("X-Forwarded-For", "").split(",", 1)[0].strip()
+        ip = forwarded or (request.client.host if request.client else "unknown")
+        retry = request_limiter.retry_after((request.url.path, ip), limit)
+        if retry:
+            action = "Search" if request.url.path == "/api/rank" else "Refinement"
+            return JSONResponse(
+                status_code=429,
+                content={"message": f"{action} limit reached ({limit} per hour). Try again later."},
+                headers={"Retry-After": str(retry)},
+            )
+    return await call_next(request)
 
 
 class Person(BaseModel):

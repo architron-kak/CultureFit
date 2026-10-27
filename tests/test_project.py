@@ -90,6 +90,63 @@ def test_refine_validation(client):
     assert 'bar' in client.post('/api/refine',json={'text':'no bars'}).json()['exclude']
 
 
+@pytest.mark.parametrize('path,body,limit', [
+    ('/api/rank', payload(), 6),
+    ('/api/refine', {'city': 'Zurich', 'text': 'no bars'}, 20),
+])
+def test_hourly_limits_before_work_starts(client, monkeypatch, clock, path, body, limit):
+    headers = {'X-Forwarded-For': ' 203.0.113.1 , 10.0.0.1'}
+    for _ in range(limit):
+        assert client.post(path, json=body, headers=headers).status_code == 200
+
+    async def forbidden(*args):
+        pytest.fail('Rate-limited requests must not reach Qloo or the LLM')
+    with monkeypatch.context() as patch:
+        patch.setattr(main.qloo, 'search', forbidden)
+        patch.setattr(main, 'parse_constraint', forbidden)
+        blocked = client.post(path, json=body, headers=headers)
+    assert blocked.status_code == 429
+    assert blocked.headers['content-type'].startswith('application/json')
+    assert str(limit) in blocked.json()['message']
+    assert 'event:' not in blocked.text
+    assert blocked.headers['Retry-After'] == '3600'
+
+    # A different proxy does not give the same first forwarded IP a new quota.
+    headers['X-Forwarded-For'] = '203.0.113.1, 10.0.0.2'
+    clock.advance(3599)
+    blocked = client.post(path, json=body, headers=headers)
+    assert blocked.status_code == 429 and blocked.headers['Retry-After'] == '1'
+    assert client.post(path, json=body, headers={'X-Forwarded-For': '203.0.113.2'}).status_code == 200
+    clock.advance(1)
+    assert client.post(path, json=body, headers=headers).status_code == 200
+
+
+def test_endpoint_quotas_are_independent_and_reads_are_unlimited(client):
+    for _ in range(6):
+        assert client.post('/api/rank', json=payload()).status_code == 200
+    assert client.post('/api/rank', json=payload()).status_code == 429
+    for _ in range(20):
+        assert client.post('/api/refine', json={'text': 'no bars'}).status_code == 200
+        assert client.get('/api/cities').status_code == 200
+        assert client.get('/').status_code == 200
+    assert client.post('/api/refine', json={'text': 'no bars'}).status_code == 429
+
+
+def test_hourly_limit_rolls_with_each_request_and_ip_falls_back_to_client(client, clock):
+    # No header (or an empty first value) uses the socket client address.
+    assert client.post('/api/rank', json=payload()).status_code == 200
+    clock.advance(60)
+    for _ in range(5):
+        assert client.post('/api/rank', json=payload()).status_code == 200
+    clock.advance(3540)
+    assert client.post('/api/rank', json=payload(), headers={'X-Forwarded-For': ' , proxy'}).status_code == 200
+    assert client.post('/api/rank', json=payload()).status_code == 429
+    clock.advance(60)
+    for _ in range(5):
+        assert client.post('/api/rank', json=payload()).status_code == 200
+    assert client.post('/api/rank', json=payload()).status_code == 429
+
+
 @pytest.mark.parametrize('text,excluded', [('quiet',True),('too noisy',True),('хочу тихий район',True),('хочу шумный район',False),('I want loud nightlife',False),('not quiet',False),('не тихий район',False)])
 def test_rules_intent(text,excluded):
     assert bool(llm._rules(text)['exclude'])==excluded

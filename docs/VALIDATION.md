@@ -114,3 +114,21 @@ location и why записаны в `SCORING_VALIDATION.md`.
 низкая уверенность, why-граф, круги на карте, reduced motion и мобильные панели.
 Дополнительные проверки подтвердили отсутствие служебного тега
 `Wheelchair accessible parking lot` в карточках и в SVG-графе.
+
+## In-memory limits — 27 October 2026
+
+- **46 tests passed**, with no external Qloo or LLM requests. A fake clock
+  covers the exact rolling-hour boundary and midnight UTC reset.
+- Per-IP quotas allow six rank requests and twenty refinement requests per
+  rolling hour. Tests cover independent IPs/endpoints, the first forwarded
+  address, socket fallback, `Retry-After`, and HTTP 429 before provider work or SSE.
+- A shared budget allows 150 outbound LLM attempts per UTC day, including
+  failures and individual OpenRouter model attempts. Tests cover cached answers,
+  missing keys, competing in-flight requests, and the rules/template fallback.
+- An exhausted daily budget preserves the existing `step`, `result`, and
+  `explanation` events and the refinement response shape.
+- Chromium displayed real local HTTP 429 messages for both endpoints. A rejected
+  refinement did not start a rank request. Desktop/mobile map, drawer, and SSE
+  checks also passed without JavaScript exceptions. Providers were synthetic.
+- No dependencies were added. Limits are process-local and reset on restart;
+  production runs one worker and one instance.

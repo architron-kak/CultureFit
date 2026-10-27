@@ -25,7 +25,7 @@ llm.ask=no_llm
 
 with TestClient(main.app) as client, sync_playwright() as p:
     browser=p.chromium.launch(headless=True,args=['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'])
-    state={'calls':0,'mode':'ok','last_body':None}
+    state={'calls':0,'mode':'ok','last_body':None,'ip':'203.0.113.1'}
     def app_route(route):
         req=route.request
         path=req.url.split('culturefit.test',1)[1] or '/'
@@ -35,7 +35,7 @@ with TestClient(main.app) as client, sync_playwright() as p:
             if state['mode']=='http-error':
                 route.fulfill(status=503,content_type='application/json',body=json.dumps({'detail':'Test service unavailable'}));return
             if state['mode']=='offline':route.abort('failed');return
-        r=client.request(req.method,path,content=req.post_data,headers={'Content-Type':'application/json'})
+        r=client.request(req.method,path,content=req.post_data,headers={'Content-Type':'application/json','X-Forwarded-For':state['ip']})
         route.fulfill(status=r.status_code,content_type=r.headers.get('content-type','text/plain'),body=r.content)
 
     page=browser.new_page(viewport={'width':1440,'height':1000})
@@ -89,6 +89,22 @@ with TestClient(main.app) as client, sync_playwright() as p:
     page.evaluate('run()');page.wait_for_function('!busy')
     assert 'Failed to fetch' in page.locator('#trace').inner_text()
     state['mode']='ok'
+    state['ip']='203.0.113.3'
+    # Exercise real HTTP 429 middleware responses, using only the fake providers.
+    limit_headers={'X-Forwarded-For':state['ip']}
+    for _ in range(6):
+        assert client.post('/api/rank',json=state['last_body'],headers=limit_headers).status_code==200
+    page.evaluate('run()');page.wait_for_function('!busy')
+    assert 'Search limit reached (6 per hour)' in page.locator('#trace').inner_text()
+    assert page.locator('#search-button').is_enabled()
+    for _ in range(20):
+        assert client.post('/api/refine',json={'city':'Almaty','text':'no bars'},headers=limit_headers).status_code==200
+    previous_calls=state['calls']
+    page.locator('#ref').fill('no bars')
+    page.get_by_role('button',name='Apply',exact=True).click()
+    page.wait_for_function('!busy')
+    assert 'Refinement limit reached (20 per hour)' in page.locator('#trace').inner_text()
+    assert state['calls']==previous_calls  # A rejected refinement must not launch a search.
     # Missing scores, low confidence, unknown why shapes, and untrusted strings.
     fixture={'areas':[{'area':'<img src=x onerror="window.xss=1">','group_fit':None,'weakest_person':None,'scores':{'You':None},'gives_up':{'You':None},'evidence':{'You':[{'name':'<svg onload="window.xss=1">','affinity':.5,'tags':['<script>x</script>'],'why':{'unknown':[{'name':'Invented favorite'}]}}]},'lat':47.37,'lon':8.54}], 'low_confidence_for':['You'], 'spread':{'You':0},'radius':1200,'trace':[]}
     page.evaluate('(data)=>show(data)',fixture)
@@ -115,8 +131,9 @@ with TestClient(main.app) as client, sync_playwright() as p:
     assert page.locator('#results-state').is_visible()
     assert 'No places' in page.locator('#results-state').inner_text()
     assert not errors,errors
-    print('PASS: API contract, SSE chunks/Unicode, duplicate runs, filters, errors, empty/missing data, low confidence, raw why, drawer, untrusted text',flush=True)
+    print('PASS: API contract, SSE chunks/Unicode, duplicate runs, filters, HTTP 429 messages for search/refine, errors, empty/missing data, low confidence, raw why, drawer, untrusted text',flush=True)
 
+    state['ip']='203.0.113.2'  # Independent visitor for the separate map scenarios.
     real=browser.new_page(viewport={'width':1440,'height':1000})
     real.on('pageerror',lambda e:errors.append(str(e)))
     real.route('http://culturefit.test/**',app_route)

@@ -1,15 +1,19 @@
 """LLM layer: Gemini -> OpenRouter -> rules/templates. The app works with no LLM at all."""
 import json, os, re, time
 import httpx
+from .limits import DailyBudget
 
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-latest")  # set an exact model from AI Studio
 OR_MODELS = [m.strip() for m in os.getenv("OPENROUTER_MODELS", "openrouter/free").split(",") if m.strip()][:3]
 _cache: dict = {}
+_llm_budget = DailyBudget()
 
 
 async def _gemini(prompt):
     key = os.getenv("GEMINI_API_KEY")
     if not key:
+        return None
+    if not _llm_budget.take():
         return None
     async with httpx.AsyncClient(timeout=30) as c:
         r = await c.post(
@@ -28,6 +32,8 @@ async def _openrouter(prompt):
     if not key:
         return None
     for m in OR_MODELS:
+        if not _llm_budget.take():
+            return None
         try:
             async with httpx.AsyncClient(timeout=40) as c:
                 r = await c.post(
