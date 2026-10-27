@@ -2,6 +2,13 @@
 
 **Автор:** [architron-kak](https://github.com/architron-kak).
 
+**Демоверсия:** [culturefit-yafy.onrender.com](https://culturefit-yafy.onrender.com).
+**Версия для хакатона:** [design/night-taste-map](https://github.com/architron-kak/CultureFit/tree/design/night-taste-map).
+**Лицензия:** [MIT](LICENSE).
+
+Опубликованное приложение использует ветку `design/night-taste-map`.
+Актуальные инструкции запуска и описание для хакатона находятся в этой ветке.
+
 Подбирает районы Цюриха и Алматы по культурным вкусам одного или двух людей.
 Qloo находит связанные места; приложение рассчитывает собственный рейтинг и показывает
 конкретные заведения. Gemini/OpenRouter необязательны: без ключей работают правила и шаблоны.
