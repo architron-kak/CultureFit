@@ -192,6 +192,54 @@ with TestClient(main.app) as client, sync_playwright() as p:
     for selector in ['#preferences','.sheet-nav','.log-panel']:
         box=real.locator(selector).bounding_box()
         assert box['x']>=0 and box['x']+box['width']<=391,(selector,box)
+    # Regressions found in the design review: hidden submit button, squeezed
+    # tablet map, clipped search circles, and an oversized fixed results header.
+    for width,height in [(1366,768),(820,1180),(390,844),(320,568)]:
+        real.set_viewport_size({'width':width,'height':height})
+        assert real.evaluate('mobile.matches') == (width <= 960)
+        real.wait_for_function('''() => {
+            if (map.isMoving()) return false;
+            const left=mobile.matches ? 20 : document.querySelector('#preferences').getBoundingClientRect().right+10;
+            const right=mobile.matches ? innerWidth-20 : document.querySelector('#results-panel').getBoundingClientRect().left-10;
+            const top=document.querySelector('.masthead').getBoundingClientRect().bottom+10;
+            const bottom=mobile.matches ? innerHeight-120 : document.querySelector('.log-panel').getBoundingClientRect().top-20;
+            return map.getSource('areas')._data.features.every(feature =>
+                feature.geometry.coordinates[0].every(coordinate => {
+                    const point=map.project(coordinate);
+                    return point.x >= left && point.x <= right && point.y >= top && point.y <= bottom;
+                }));
+        }''')
+        real.evaluate("setSheet('taste')")
+        for scroll in (0,10000):
+            real.locator('#preferences .panel-inner').evaluate('(el, top) => el.scrollTop=top',scroll)
+            assert real.locator('#search-button').evaluate('''el => {
+                const box=el.getBoundingClientRect();
+                return document.elementFromPoint(box.x+box.width/2,box.y+box.height/2)?.closest('#search-button')===el;
+            }''')
+        real.evaluate("message('Search limit reached (6 per hour). Try again later.')")
+        assert real.locator('#field-message').evaluate('''el => {
+            const box=el.getBoundingClientRect(), panel=document.querySelector('#preferences').getBoundingClientRect();
+            return box.top >= panel.top && box.bottom <= panel.bottom;
+        }''')
+        real.evaluate('message()')
+        real.locator('#preferences .panel-inner').evaluate('el => el.scrollTop=0')
+    # The persistent action is outside the form, but must still submit it.
+    before_calls=state['calls']
+    real.locator('#search-button').click()
+    real.wait_for_function('!busy')
+    assert state['calls']==before_calls+1
+    assert real.locator('#results .result-card').count()==7
+    real.locator('#results-scroll').evaluate('el => el.scrollTop=350')
+    assert real.locator('.results-heading').bounding_box()['y'] < real.locator('#results-panel').bounding_box()['y']
+    real.locator('.card-button').first.click()
+    assert real.locator('.why-diagram').bounding_box()['width'] >= 440
+    real.locator('.drawer-body').evaluate('el => el.scrollTop=300')
+    real.keyboard.press('Escape')
+    real.locator('.card-button').first.click()
+    assert real.locator('.drawer-body').evaluate('el => el.scrollTop')==0
+    real.keyboard.press('Escape')
+    real.evaluate('(data)=>show(data)',data)
+    assert real.locator('#results-scroll').evaluate('el => el.scrollTop')==0
     assert not errors,errors
-    print('PASS: full-screen map, 7 polygons/markers, map drawer, reduced motion, mobile taste/map/results sheets, no JS exceptions',flush=True)
+    print('PASS: full-screen map, 7 polygons/markers, map drawer, reduced motion, 320–1366px layouts, persistent submit/errors, full circle bounds after resize, readable diagram, scroll reset, no JS exceptions',flush=True)
     browser.close()

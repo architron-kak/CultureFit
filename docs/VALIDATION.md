@@ -132,3 +132,18 @@ location и why записаны в `SCORING_VALIDATION.md`.
   checks also passed without JavaScript exceptions. Providers were synthetic.
 - No dependencies were added. Limits are process-local and reset on restart;
   production runs one worker and one instance.
+
+## Responsive design review — 28 October 2026
+
+The review found a clipped search button at 1366 × 768, a hidden action on
+phones, cramped side panels at 820 px, and very small venue/tag labels.
+The search action and feedback now stay visible below the scrolling form.
+Tablets use the bottom-sheet navigation, text is larger, and the evidence diagram
+can scroll horizontally instead of shrinking its labels. Results headings scroll
+with the cards, and reopening an area starts its explanation at the top.
+
+Chromium checks passed at 1366 × 768, 820 × 1180, 390 × 844, and 320 × 568.
+They cover form submission from the persistent button, visible errors, complete
+circle bounds after resizing, diagram readability, and scroll resets. Existing
+SSE, HTTP 429, map, drawer, and reduced-motion browser checks also passed with
+synthetic providers and no JavaScript exceptions. No live search quota was used.
