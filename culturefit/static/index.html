@@ -97,6 +97,7 @@
     .primary:hover:not(:disabled) { background: #65e2d1; }
     .primary svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; flex-shrink: 0; }
     .taste-hint { color: var(--muted); font-size: 11px; margin: 9px 0 0; text-align: center; }
+    .example-button { width: 100%; margin-top: 8px; }
     .refine-section { border-top: 1px solid var(--line); padding-top: 19px; margin-top: 21px; }
     .refine-section h2 { font: 400 20px var(--serif); margin-bottom: 6px; }
     .refine-section > p { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
@@ -359,6 +360,7 @@
       <div class="panel-action">
         <p id="field-message" class="field-message" role="status" hidden></p>
         <button class="primary" id="search-button" form="taste-form" type="submit"><span class="search-glyph" aria-hidden="true">✳</span><span id="search-label">Find our neighborhood</span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5"/></svg></button>
+        <button class="secondary example-button" id="example-button" type="button">Try an example</button>
         <p class="taste-hint" id="favorites-help">Up to six favorites each. Leave the second field blank to go solo.</p>
       </div>
     </section>
@@ -1151,6 +1153,17 @@
       }
     }
 
+    function tryExample() {
+      if (busy) return;
+      $('#city').value = 'Zurich';
+      // Start a fresh search, including when Zurich is already selected.
+      $('#city').dispatchEvent(new Event('change'));
+      $('#f1').value = 'Blade Runner, Radiohead, Studio Ghibli';
+      $('#f2').value = 'Metallica, Peaky Blinders, Guinness';
+      updateCounts();
+      run();
+    }
+
     async function refine() {
       if (busy) return;
       const text = $('#ref').value.trim();
@@ -1191,6 +1204,7 @@
     $('#taste-form').addEventListener('submit', event => { event.preventDefault(); run(); });
     $('#refine-form').addEventListener('submit', event => { event.preventDefault(); refine(); });
     $('#reset-button').addEventListener('click', reset);
+    $('#example-button').addEventListener('click', tryExample);
     ['f1', 'f2'].forEach(id => $('#' + id).addEventListener('input', updateCounts));
     $('#city').addEventListener('change', () => {
       constraints = { exclude: [], avoid_areas: [] };
