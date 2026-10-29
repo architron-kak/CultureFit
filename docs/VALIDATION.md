@@ -147,3 +147,21 @@ They cover form submission from the persistent button, visible errors, complete
 circle bounds after resizing, diagram readability, and scroll resets. Existing
 SSE, HTTP 429, map, drawer, and reduced-motion browser checks also passed with
 synthetic providers and no JavaScript exceptions. No live search quota was used.
+
+## Frontend demo and result summaries — 29 October 2026
+
+- `python -m pytest -q`: **46 passed**; the existing Starlette TestClient
+  deprecation warning remains. No dependencies or backend/API changes.
+- `scripts/frontend_check.py`: offline Chromium checks passed for the example's
+  normal search payload, constraint reset, busy guard and HTTP failure without
+  fallback; personal/group winners, tie breaks, missing versus zero scores,
+  unanimous/solo/empty cases; refinement snapshots, removed areas, signed score
+  deltas, unchanged results, evidence-only changes, repeated refinements and
+  profile/city isolation; rounded evidence numbers with unchanged raw JSON,
+  actual contribution links, and escaped API-derived text.
+- `scripts/browser_check.py`: existing SSE, HTTP 429, drawer, reduced-motion,
+  map and responsive checks passed, including 320–1366 px layouts. Real
+  OpenStreetMap tiles loaded; Qloo and LLM providers were synthetic.
+- Desktop and mobile result screenshots were visually inspected. No live
+  Qloo/Gemini requests were made for these changes; production deployment and
+  other browser engines were not verified in this pass.

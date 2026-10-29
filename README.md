@@ -158,12 +158,18 @@ Run the browser checks:
 
 ```bash
 PLAYWRIGHT_BROWSERS_PATH=/tmp/culturefit-browsers python -m playwright install chromium
+PLAYWRIGHT_BROWSERS_PATH=/tmp/culturefit-browsers python scripts/frontend_check.py
 PLAYWRIGHT_BROWSERS_PATH=/tmp/culturefit-browsers python scripts/browser_check.py
 ```
 
 The browser check uses synthetic Qloo responses to test the interface and real
 MapLibre rendering when the CDN is available. Artifacts are saved in `artifacts/`,
 which is excluded from Git.
+
+`frontend_check.py` runs entirely offline. It covers the example search, personal
+and shared picks, refinement comparisons, escaped API text, and evidence-number
+formatting. Its intercepted API responses are test fixtures only; the app's
+"Try an example" button always starts a normal real search with no saved fallback.
 
 Further documentation:
 

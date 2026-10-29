@@ -152,6 +152,8 @@
     .refinement-diff p { font-size: 12px; margin-top: 7px; }
     .refinement-diff .diff-note { color: var(--muted); }
     .diff-metric { display: block; margin-top: 3px; }
+    .qloo-contribution { margin-top: 12px; font-size: 12px; color: var(--muted); }
+    .qloo-contribution strong { display: block; color: var(--text); font-weight: 500; margin-bottom: 5px; }
     .notice { color: #f7c368; background: #332715; border: 1px solid #795920; border-radius: 9px; font-size: 12px; line-height: 1.7; padding: 11px; margin-bottom: 12px; }
     .state-box { border: 1px dashed #405252; border-radius: 12px; padding: 24px 18px; color: var(--muted); text-align: center; }
     .state-box h3 { font: 400 22px var(--serif); color: var(--text); margin: 10px 0; }
@@ -386,7 +388,7 @@
     <section class="results-panel glass" id="results-panel" aria-labelledby="results-title" hidden>
       <div class="panel-grip" aria-hidden="true"></div>
       <div class="results-scroll" id="results-scroll">
-        <div class="results-heading"><p class="eyebrow"><span>YOUR COMMON GROUND</span><span id="result-count">EXPLORING</span></p><h2 id="results-title">Where your worlds meet.</h2><p class="score-note">Scores are relative among compared areas (0–100), <strong>not percentages</strong>. Group fit = the weakest person’s score.</p><div class="people-legend" id="people-legend"><span class="teal-text">● You</span><span class="coral-text">● Partner</span><span style="color:var(--amber)">● Gap</span></div></div>
+        <div class="results-heading"><p class="eyebrow"><span>YOUR COMMON GROUND</span><span id="result-count">EXPLORING</span></p><h2 id="results-title">Where your worlds meet.</h2><p class="score-note">Scores are relative among compared areas (0–100), <strong>not percentages</strong>. Group fit = the weakest person’s score.</p><div class="people-legend" id="people-legend"><span class="teal-text">● You</span><span class="coral-text">● Partner</span><span style="color:var(--amber)">● Gap</span></div><p class="qloo-contribution"><strong>Your favorites → Qloo place signals → venues → area scores</strong>Gemini writes the text; scores are computed by our algorithm from Qloo data.</p></div>
         <div class="results-content">
           <div id="confidence-notice" class="notice" role="status" hidden></div>
           <section id="refinement-diff" class="refinement-diff" aria-label="Refinement comparison" hidden></section>
@@ -972,6 +974,10 @@
         .map(entry => ({ entity_id: entry.entity_id, score: entry.score }));
     }
 
+    function evidenceNumber(value) {
+      return typeof value === 'number' && Number.isFinite(value) ? value.toFixed(2) : '—';
+    }
+
     function svgElement(tag, attributes = {}, text) {
       const node = document.createElementNS('http://www.w3.org/2000/svg', tag);
       Object.entries(attributes).forEach(([name, value]) => node.setAttribute(name, String(value)));
@@ -1045,9 +1051,14 @@
         const y = 162 + index * 54;
         svgNode(svg, 12, y, 115, 'ID ' + id, color);
         const weights = [...new Set(venues.flatMap(venue => whyLinks(venue.why))
-          .filter(link => link.entity_id === id).map(link => link.score))];
-        svg.append(svgElement('text', { x: 14, y: y + 29, fill: '#b8d4d6', 'font-size': 10 },
-          'Reported weight: ' + weights.join(', ')));
+          .filter(link => link.entity_id === id).map(link => evidenceNumber(link.score)))];
+        const fullLabel = 'Reported weights: ' + weights.join(', ');
+        // Keep the label inside its column; all rounded weights remain available
+        // in the SVG title and the per-venue records below, with raw JSON intact.
+        const label = svgElement('text', { x: 14, y: y + 29, fill: '#b8d4d6', 'font-size': 10,
+          'aria-label': fullLabel }, 'Weight: ' + weights[0] + (weights.length > 1 ? '…' : ''));
+        label.append(svgElement('title', {}, fullLabel));
+        svg.append(label);
       });
       positions.forEach(position => {
         svgNode(svg, 156, position.y, 130, String(position.venue.name), color);
@@ -1078,14 +1089,14 @@
         const links = whyLinks(venue.why);
         if (links.length) {
           links.forEach(link => record.append(element('p', '',
-            `Input entity ${link.entity_id} → this venue. Reported contribution: ${link.score}.`)));
+            `Input entity ${link.entity_id} → this venue. Reported contribution: ${evidenceNumber(link.score)}.`)));
         } else {
           record.append(element('p', '', venue.why == null
             ? 'Qloo did not return a why object for this venue.'
             : 'No supported contribution links in this why object. The raw data is available below.'));
         }
         const affinity = typeof venue.affinity === 'number' && Number.isFinite(venue.affinity)
-          ? String(venue.affinity) : 'not returned';
+          ? evidenceNumber(venue.affinity) : 'not returned';
         record.append(element('p', '', 'Venue affinity: ' + affinity + '. This is distinct from the relative neighborhood score.'));
         if (venue.why !== null && venue.why !== undefined) {
           const details = element('details', 'raw-why');

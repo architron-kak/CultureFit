@@ -169,6 +169,39 @@ def check(page):
     assert page.evaluate("([a,b]) => refinementComparison(a,b).newTop", [previous, result]) is None
     print("PASS: refinement diff, top changes/removals, signed score changes, no change, evidence-only change, repeated refine, reset/errors/profile isolation, escaped constraints")
 
+    assert "Your favorites → Qloo place signals → venues → area scores" in page.locator(".qloo-contribution").inner_text()
+    assert "Gemini writes the text; scores are computed by our algorithm from Qloo data." in page.locator(".qloo-contribution").inner_text()
+    assert page.evaluate("[evidenceNumber(0.123456), evidenceNumber(0.98765), evidenceNumber(1), evidenceNumber(null)]") == ["0.12", "0.99", "1.00", "—"]
+    why = {"signal.interests.entities": [
+        {"entity_id": "real-id-123", "score": 0.123456789},
+        {"entity_id": malicious, "score": 0.987654321},
+        {"entity_id": "invalid-string-score", "score": "0.8"},
+        {"entity_id": "invalid-null-score", "score": None},
+    ]}
+    graph_area = area("Evidence", 80, 80, 80)
+    graph_area["evidence"]["You"] = [
+        {"name": "Real venue", "tags": ["Music"], "affinity": 0.87654321, "why": why},
+        {"name": "Second venue", "tags": [], "why": {"signal.interests.entities": [{"entity_id": "real-id-123", "score": 0.54321987}]}},
+    ]
+    page.evaluate("data => show(data)", {**result, "areas": [graph_area]})
+    page.locator(".card-button").first.click()
+    assert page.locator(".why-diagram path[stroke-dasharray]").count() == 3
+    assert page.locator(".why-diagram text[aria-label]").first.get_attribute("aria-label") == "Reported weights: 0.12, 0.54"
+    assert "real-id-123" in page.locator("#why-records").inner_text()
+    assert "Reported contribution: 0.12." in page.locator("#why-records").inner_text()
+    assert "Venue affinity: 0.88." in page.locator("#why-records").inner_text()
+    assert "0.123456789" not in page.locator("#diagram-scroll").inner_text()
+    assert "0.123456789" in page.locator(".raw-why pre").first.text_content()
+    assert "Blade Runner" not in page.locator("#diagram-scroll").inner_text()
+    assert "Radiohead" not in page.locator("#diagram-scroll").inner_text()
+    assert page.locator("#diagram-scroll img,#why-records img,#why-records script").count() == 0
+    assert page.evaluate("window.xss") is None
+    # Unsupported shapes and invalid values cannot create contribution links.
+    assert page.evaluate("whyLinks({'favorites': [{'entity_id': 'invented', 'score': 1}]})") == []
+    assert page.evaluate("whyLinks({'signal.interests.entities': [{entity_id: 'bad', score: Infinity}]})") == []
+    page.keyboard.press("Escape")
+    print("PASS: Qloo attribution, rounded graph/record numbers, intact raw evidence, only real links, literal entity IDs")
+
 
 if __name__ == "__main__":
     with sync_playwright() as playwright:
