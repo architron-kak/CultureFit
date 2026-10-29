@@ -61,6 +61,42 @@ def check(page):
     assert page.evaluate("lastResult") is None  # No saved fallback after a failed search.
     print("PASS: example uses normal search, correct profiles/city, resets constraints, busy guard, HTTP errors without fallback")
 
+    def area(name, you, partner, group):
+        return {"area": name, "scores": {"You": you, "Partner": partner},
+                "group_fit": group, "evidence": {"You": [{"name": "Cafe " + name}], "Partner": []}}
+
+    areas = [area("Solo favorite", 100, 20, 20), area("Partner favorite", 30, 100, 30),
+             area("Shared", 85, 90, 85), area("Better tie", 100, 40, 40)]
+    data = {**result, "areas": areas}
+    before = json.dumps(data)
+    picks = page.evaluate("data => computePicks(data)", data)
+    assert [pick["area"]["area"] for pick in picks] == ["Better tie", "Partner favorite", "Shared"]
+    assert json.dumps(data) == before
+    page.evaluate("data => show(data)", data)
+    assert page.locator("#picks .pick").count() == 3
+    assert "Cafe Better tie" in page.locator("#picks").inner_text()
+    assert "You: 85 / 100" in page.locator("#picks .shared-pick").inner_text()
+    assert "Partner: 90 / 100" in page.locator("#picks .shared-pick").inner_text()
+    assert "Best of the compared areas" in page.locator("#picks").inner_text()
+    # Group ties keep response order. Zero is a valid score; null is missing.
+    assert page.evaluate("data => bestArea(data).area", [areas[2], area("Tie", 85, 90, 85)]) == "Shared"
+    assert page.evaluate("data => bestArea(data, 'You').area", [area("Missing", None, None, None), area("Zero", 0, 0, 0)]) == "Zero"
+    assert page.evaluate("data => bestArea(data, 'You')", [area("Missing", None, None, None)]) is None
+    malicious = '<img src=x onerror="window.xss=1">'
+    page.evaluate("data => show(data)", {**result, "areas": [area(malicious, 100, 100, 100)]})
+    assert page.locator("#picks .pick").count() == 1
+    assert "One area wins for everyone" in page.locator("#picks").inner_text()
+    assert malicious in page.locator("#picks").inner_text()
+    assert page.locator("#picks img,#picks script").count() == 0
+    assert page.evaluate("window.xss") is None
+    solo = {"area": "Solo", "scores": {"You": 80}, "group_fit": 80, "evidence": {}}
+    page.evaluate("data => show(data)", {**result, "areas": [solo]})
+    assert page.locator("#picks .pick").count() == 1
+    assert "Best for both" not in page.locator("#picks").inner_text()
+    page.evaluate("data => show(data)", result)
+    assert page.locator("#picks").is_hidden()
+    print("PASS: personal/group picks, tie breaks, null/zero scores, shared winner, solo/empty results, evidence and escaped API strings")
+
 
 if __name__ == "__main__":
     with sync_playwright() as playwright:

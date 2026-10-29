@@ -138,6 +138,15 @@
     .coral-text { color: var(--coral); }
     .results-scroll { flex: 1; min-height: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: #436060 transparent; }
     .results-content { padding: 15px 14px 18px; }
+    .picks-strip { margin-bottom: 16px; }
+    .picks-strip > p { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+    .pick { border-left: 2px solid var(--teal); padding: 10px 12px; margin-top: 7px; background: #102022; border-radius: 0 8px 8px 0; overflow-wrap: anywhere; }
+    .pick.partner-pick { border-color: var(--coral); }
+    .pick.shared-pick { border-color: var(--amber); }
+    .pick h3 { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .pick strong { display: block; font: 400 20px var(--serif); }
+    .pick p { font-size: 12px; margin-top: 5px; }
+    .pick .pick-venues { color: var(--muted); }
     .notice { color: #f7c368; background: #332715; border: 1px solid #795920; border-radius: 9px; font-size: 12px; line-height: 1.7; padding: 11px; margin-bottom: 12px; }
     .state-box { border: 1px dashed #405252; border-radius: 12px; padding: 24px 18px; color: var(--muted); text-align: center; }
     .state-box h3 { font: 400 22px var(--serif); color: var(--text); margin: 10px 0; }
@@ -375,6 +384,7 @@
         <div class="results-heading"><p class="eyebrow"><span>YOUR COMMON GROUND</span><span id="result-count">EXPLORING</span></p><h2 id="results-title">Where your worlds meet.</h2><p class="score-note">Scores are relative among compared areas (0–100), <strong>not percentages</strong>. Group fit = the weakest person’s score.</p><div class="people-legend" id="people-legend"><span class="teal-text">● You</span><span class="coral-text">● Partner</span><span style="color:var(--amber)">● Gap</span></div></div>
         <div class="results-content">
           <div id="confidence-notice" class="notice" role="status" hidden></div>
+          <section id="picks" class="picks-strip" aria-label="Best of the compared areas" hidden></section>
           <div id="results-state" class="state-box"><span class="state-icon" aria-hidden="true">⌖</span><h3>Connecting your worlds.</h3><p>Matching your favorites and exploring nearby places.</p></div>
           <div id="results" aria-busy="false"></div>
           <div class="explanation-box" id="explanation-box" hidden><p class="eyebrow" id="explanation-label">THE STORY BEHIND THE SIGNAL</p><p id="expl"></p></div>
@@ -558,6 +568,8 @@
       selectedArea = null;
       clearMap();
       $('#results').replaceChildren();
+      $('#picks').replaceChildren();
+      $('#picks').hidden = true;
       $('#results-scroll').scrollTop = 0;
       $('#confidence-notice').hidden = true;
       $('#explanation-box').hidden = true;
@@ -841,9 +853,65 @@
       }
     }
 
+    // Keep response order when both scores tie; never promote missing data to zero.
+    function bestArea(areas, person = null) {
+      let best = null;
+      const score = area => numericScore(person === null ? area.group_fit : area.scores?.[person]);
+      for (const area of areas) {
+        const value = score(area);
+        if (value === null) continue;
+        if (!best || value > score(best) || (value === score(best)
+            && (numericScore(area.group_fit) ?? -1) > (numericScore(best.group_fit) ?? -1))) {
+          best = area;
+        }
+      }
+      return best;
+    }
+
+    function computePicks(data) {
+      const areas = data.areas || [];
+      const people = [...new Set(areas.flatMap(area => Object.keys(area.scores || {})))];
+      const picks = people.map(person => ({
+        label: person === 'You' ? 'Best for you' : person === 'Partner' ? 'Best for partner' : 'Best for ' + person,
+        person, area: bestArea(areas, person)
+      }));
+      if (people.length > 1) picks.push({ label: 'Best for both', person: null, area: bestArea(areas) });
+      return picks;
+    }
+
+    function renderPicks(data) {
+      const container = $('#picks');
+      const picks = computePicks(data);
+      container.hidden = picks.length === 0;
+      if (!picks.length) return;
+      container.append(element('p', '', 'Best of the compared areas'));
+      const unanimous = picks.length === 3 && picks.every(pick => pick.area && pick.area === picks[0].area);
+      if (unanimous) container.append(element('p', 'teal-text', 'One area wins for everyone'));
+      // A shared winner needs only one summary, with both people's evidence.
+      (unanimous ? picks.slice(-1) : picks).forEach(pick => {
+        const card = element('article', 'pick ' + (pick.person === null ? 'shared-pick' : pick.person === 'Partner' ? 'partner-pick' : ''));
+        card.append(element('h3', '', pick.label));
+        if (!pick.area) {
+          card.append(element('p', '', 'Not enough evidence to choose.'));
+        } else {
+          card.append(element('strong', '', pick.area.area));
+          if (pick.person === null) card.append(element('p', '', 'Group fit ' + scoreText(pick.area.group_fit)));
+          const people = pick.person === null ? Object.keys(pick.area.scores || {}) : [pick.person];
+          people.forEach(person => {
+            card.append(element('p', '', `${person}: ${scoreText(pick.area.scores?.[person])} / 100`));
+            const venues = pick.area.evidence?.[person];
+            const names = (Array.isArray(venues) ? venues : []).slice(0, 2).map(venue => venue.name);
+            card.append(element('p', 'pick-venues', names.length ? names.join(' · ') : 'No qualifying venue evidence.'));
+          });
+        }
+        container.append(card);
+      });
+    }
+
     function show(data) {
       clearResults();
       lastResult = data;
+      renderPicks(data);
       logRawWhy(data);
       $('#center-story').hidden = true;
       $('#results-panel').hidden = false;
