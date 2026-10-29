@@ -147,6 +147,11 @@
     .pick strong { display: block; font: 400 20px var(--serif); }
     .pick p { font-size: 12px; margin-top: 5px; }
     .pick .pick-venues { color: var(--muted); }
+    .refinement-diff { margin-bottom: 16px; padding: 13px; border: 1px solid var(--line); border-radius: 10px; overflow-wrap: anywhere; }
+    .refinement-diff h3 { font: 400 20px var(--serif); margin-bottom: 8px; }
+    .refinement-diff p { font-size: 12px; margin-top: 7px; }
+    .refinement-diff .diff-note { color: var(--muted); }
+    .diff-metric { display: block; margin-top: 3px; }
     .notice { color: #f7c368; background: #332715; border: 1px solid #795920; border-radius: 9px; font-size: 12px; line-height: 1.7; padding: 11px; margin-bottom: 12px; }
     .state-box { border: 1px dashed #405252; border-radius: 12px; padding: 24px 18px; color: var(--muted); text-align: center; }
     .state-box h3 { font: 400 22px var(--serif); color: var(--text); margin: 10px 0; }
@@ -384,6 +389,7 @@
         <div class="results-heading"><p class="eyebrow"><span>YOUR COMMON GROUND</span><span id="result-count">EXPLORING</span></p><h2 id="results-title">Where your worlds meet.</h2><p class="score-note">Scores are relative among compared areas (0–100), <strong>not percentages</strong>. Group fit = the weakest person’s score.</p><div class="people-legend" id="people-legend"><span class="teal-text">● You</span><span class="coral-text">● Partner</span><span style="color:var(--amber)">● Gap</span></div></div>
         <div class="results-content">
           <div id="confidence-notice" class="notice" role="status" hidden></div>
+          <section id="refinement-diff" class="refinement-diff" aria-label="Refinement comparison" hidden></section>
           <section id="picks" class="picks-strip" aria-label="Best of the compared areas" hidden></section>
           <div id="results-state" class="state-box"><span class="state-icon" aria-hidden="true">⌖</span><h3>Connecting your worlds.</h3><p>Matching your favorites and exploring nearby places.</p></div>
           <div id="results" aria-busy="false"></div>
@@ -412,6 +418,7 @@
       Almaty: { center: [76.934, 43.25], zoom: 11.7, coordinates: '43.250° N / 76.934° E' }
     };
     let map, ready = false, busy = false, lastResult = null;
+    let lastSearch = null;
     let constraints = { exclude: [], avoid_areas: [] };
     let activePeople = [], markers = [], revealTimers = [], generation = 0;
     let selectedArea = null, drawerPerson = null, drawerReturnFocus = null;
@@ -565,11 +572,14 @@
       generation++;
       closeDrawer(false);
       lastResult = null;
+      lastSearch = null;
       selectedArea = null;
       clearMap();
       $('#results').replaceChildren();
       $('#picks').replaceChildren();
       $('#picks').hidden = true;
+      $('#refinement-diff').replaceChildren();
+      $('#refinement-diff').hidden = true;
       $('#results-scroll').scrollTop = 0;
       $('#confidence-notice').hidden = true;
       $('#explanation-box').hidden = true;
@@ -1184,7 +1194,65 @@
       if (!lastResult) throw new Error('The search ended without a result. Please try again.');
     }
 
-    async function performRun(people) {
+    // Sort object keys so JSON property order alone cannot imply a changed result.
+    function canonical(value) {
+      if (Array.isArray(value)) return value.map(canonical);
+      if (value && typeof value === 'object') {
+        return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
+      }
+      return value;
+    }
+
+    function refinementComparison(previous, current) {
+      const before = bestArea(previous.areas || []);
+      const after = bestArea(current.areas || []);
+      const names = [...new Set([before?.area, after?.area].filter(name => name !== undefined))];
+      const changes = names.map(name => {
+        const oldArea = previous.areas.find(area => area.area === name);
+        const newArea = current.areas.find(area => area.area === name);
+        const people = [...new Set([...Object.keys(oldArea?.scores || {}), ...Object.keys(newArea?.scores || {})])];
+        const metrics = [null, ...people].map(person => {
+          const oldScore = numericScore(person === null ? oldArea?.group_fit : oldArea?.scores?.[person]);
+          const newScore = numericScore(person === null ? newArea?.group_fit : newArea?.scores?.[person]);
+          return { label: person === null ? 'Group fit' : person, before: oldScore, after: newScore,
+            delta: oldScore !== null && newScore !== null ? newScore - oldScore : null };
+        });
+        return { area: name, beforePresent: !!oldArea, afterPresent: !!newArea, metrics };
+      });
+      const signature = result => JSON.stringify(canonical({
+        areas: result.areas || [], low_confidence_for: result.low_confidence_for || [],
+        spread: result.spread || {}, radius: result.radius
+      }));
+      return { previousTop: before?.area ?? null, newTop: after?.area ?? null,
+        unchanged: signature(previous) === signature(current), changes };
+    }
+
+    function renderRefinementDiff(previous, current, applied) {
+      const diff = refinementComparison(previous, current);
+      const container = $('#refinement-diff');
+      container.replaceChildren(element('h3', '', 'What changed'));
+      container.append(element('p', '', `Previous top: ${diff.previousTop ?? 'No scored area'}`),
+        element('p', '', `New top: ${diff.newTop ?? 'No scored area'}`),
+        element('p', '', 'Excluded words: ' + (applied.exclude.join(', ') || 'None')),
+        element('p', '', 'Skipped areas: ' + (applied.avoid_areas.join(', ') || 'None')));
+      if (diff.unchanged) container.append(element('p', '', 'Nothing changed in the returned results.'));
+      diff.changes.forEach(change => {
+        const row = element('p');
+        row.append(element('strong', '', change.area));
+        change.metrics.forEach(metric => {
+          const before = change.beforePresent ? scoreText(metric.before) : 'not compared';
+          const after = change.afterPresent ? scoreText(metric.after) : 'not compared';
+          const delta = metric.delta === null ? '' : ` (${metric.delta > 0 ? '+' : ''}${Number(metric.delta.toFixed(2))} points)`;
+          row.append(element('span', 'diff-metric', `${metric.label}: ${before} → ${after}${delta}`));
+        });
+        container.append(row);
+      });
+      container.append(element('p', 'diff-note',
+        'Scores are relative to each run’s compared areas. Changes are not absolute changes in fit. — means insufficient evidence.'));
+      container.hidden = false;
+    }
+
+    async function performRun(people, previous = null) {
       clearResults();
       activePeople = people;
       message();
@@ -1204,6 +1272,8 @@
         })
       });
       await consumeStream(response);
+      lastSearch = { city: $('#city').value, people: JSON.stringify(people) };
+      if (previous) renderRefinementDiff(previous, lastResult, constraints);
     }
 
     async function run() {
@@ -1238,6 +1308,9 @@
       if (!text) { $('#ref').focus(); return; }
       let people;
       try { people = getPeople(); } catch (error) { report(error); return; }
+      // Do not attribute a changed taste profile or city to refinement alone.
+      const previous = lastSearch?.city === $('#city').value && lastSearch.people === JSON.stringify(people)
+        ? lastResult : null;
       setBusy(true);
       message();
       hadError = false;
@@ -1250,7 +1323,7 @@
         constraints.exclude = [...new Set([...constraints.exclude, ...(data.exclude || [])])];
         constraints.avoid_areas = [...new Set([...constraints.avoid_areas, ...(data.avoid_areas || [])])];
         renderConstraints();
-        await performRun(people);
+        await performRun(people, previous);
         message(String(data.message));
         log(data.message);
       } catch (error) {

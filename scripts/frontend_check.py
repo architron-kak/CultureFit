@@ -1,4 +1,5 @@
 """Offline browser regressions for frontend logic; no real provider calls."""
+import copy
 import json
 import os
 from pathlib import Path
@@ -12,7 +13,8 @@ os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", "/tmp/culturefit-browsers")
 def check(page):
     requests = []
     result = {"areas": [], "low_confidence_for": [], "radius": 700}
-    state = {"fail": False}
+    state = {"fail": False, "result": result, "refine_fail": False,
+             "constraints": {"exclude": ["bar"], "avoid_areas": ["Shared"]}}
 
     def route_app(route):
         path = route.request.url.split("culturefit.test", 1)[1]
@@ -25,7 +27,12 @@ def check(page):
             if state["fail"]:
                 route.fulfill(status=429, json={"message": "Example search limit reached"})
             else:
-                route.fulfill(content_type="text/event-stream", body="event: result\ndata: " + json.dumps(result) + "\n\n")
+                route.fulfill(content_type="text/event-stream", body="event: result\ndata: " + json.dumps(state["result"]) + "\n\n")
+        elif path == "/api/refine":
+            if state["refine_fail"]:
+                route.fulfill(status=429, json={"message": "Refine limit"})
+            else:
+                route.fulfill(json={**state["constraints"], "message": "Constraints applied", "source": "rules"})
         else:
             route.abort()
 
@@ -96,6 +103,71 @@ def check(page):
     page.evaluate("data => show(data)", result)
     assert page.locator("#picks").is_hidden()
     print("PASS: personal/group picks, tie breaks, null/zero scores, shared winner, solo/empty results, evidence and escaped API strings")
+
+    previous = data
+    current = {**result, "areas": [area("Better tie", 90, 80, 80), area("Partner favorite", 40, 100, 40)]}
+    diff = page.evaluate("([a,b]) => refinementComparison(a,b)", [previous, current])
+    assert diff["previousTop"] == "Shared" and diff["newTop"] == "Better tie"
+    assert diff["changes"][0]["afterPresent"] is False
+    assert diff["changes"][0]["metrics"][0]["delta"] is None
+    assert diff["changes"][1]["metrics"] == [
+        {"label": "Group fit", "before": 40, "after": 80, "delta": 40},
+        {"label": "You", "before": 100, "after": 90, "delta": -10},
+        {"label": "Partner", "before": 40, "after": 80, "delta": 40},
+    ]
+    same = {**previous, "trace": ["Different log, same result"]}
+    assert page.evaluate("([a,b]) => refinementComparison(a,b).unchanged", [previous, same])
+    changed_evidence = copy.deepcopy(previous)
+    changed_evidence["areas"][0]["evidence"]["You"][0]["name"] = "Different cafe"
+    assert not page.evaluate("([a,b]) => refinementComparison(a,b).unchanged", [previous, changed_evidence])
+    # End-to-end browser state: capture the previous result before clearResults().
+    state.update(fail=False, result=previous)
+    page.locator("#example-button").click()
+    page.wait_for_function("!busy")
+    state["result"] = current
+
+    def refine():
+        page.locator("#ref").fill("no bars, avoid Shared")
+        page.locator("#refine-form button").click()
+        page.wait_for_function("!busy")
+
+    refine()
+    text = page.locator("#refinement-diff").inner_text()
+    assert "Previous top: Shared" in text and "New top: Better tie" in text
+    assert "Excluded words: bar" in text and "Skipped areas: Shared" in text
+    assert "not compared" in text and "(-10 points)" in text and "(+40 points)" in text
+    assert requests[-1]["exclude"] == ["bar"] and requests[-1]["avoid_areas"] == ["Shared"]
+    refine()
+    assert "Nothing changed" in page.locator("#refinement-diff").inner_text()
+    assert "Previous top: Better tie" in page.locator("#refinement-diff").inner_text()
+    # A normal search clears the diff, as do a changed profile/city and failed rank.
+    page.locator("#search-button").click()
+    page.wait_for_function("!busy")
+    assert page.locator("#refinement-diff").is_hidden()
+    page.locator("#f1").fill("New taste")
+    refine()
+    assert page.locator("#refinement-diff").is_hidden()
+    state["fail"] = True
+    refine()
+    assert page.locator("#refinement-diff").is_hidden()
+    state["fail"] = False
+    page.locator("#city").select_option("Almaty")
+    refine()
+    assert page.locator("#refinement-diff").is_hidden()
+    state["refine_fail"] = True
+    calls = len(requests)
+    refine()
+    assert len(requests) == calls
+    # API-derived area names, person names and constraint words stay literal text.
+    page.evaluate("([a,b,c]) => renderRefinementDiff(a,b,c)", [
+        previous, {**result, "areas": [area(malicious, 90, 90, 90)]},
+        {"exclude": [malicious], "avoid_areas": [malicious]},
+    ])
+    assert malicious in page.locator("#refinement-diff").inner_text()
+    assert page.locator("#refinement-diff img,#refinement-diff script").count() == 0
+    assert page.evaluate("window.xss") is None
+    assert page.evaluate("([a,b]) => refinementComparison(a,b).newTop", [previous, result]) is None
+    print("PASS: refinement diff, top changes/removals, signed score changes, no change, evidence-only change, repeated refine, reset/errors/profile isolation, escaped constraints")
 
 
 if __name__ == "__main__":
